@@ -1078,6 +1078,15 @@ export default function BabylonSceneContent() {
           console.log('🖼️ Textures:', scene.textures.length);
           console.log('📋 ===== END GLB CONTENTS =====');
           
+          // FINAL DEBUG: Show which lamp meshes we actually found and used
+          console.log('');
+          console.log('🔦🔦🔦 FINAL LAMP MESH REPORT:');
+          console.log(`   Lamp meshes used: ${lampMeshes.length}`);
+          lampMeshes.forEach((m: any, idx: number) => {
+            const pos = m.getAbsolutePosition();
+            console.log(`   [${idx}] ${m.name} at (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`);
+          });
+          
           // Check total GLB lights count
           const totalGLBLights = glbLights.spotLights.length + glbLights.directionalLights.length + 
                                  glbLights.pointLights.length + glbLights.hemisphericLights.length;
