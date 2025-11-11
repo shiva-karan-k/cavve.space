@@ -1,0 +1,14 @@
+{
+  "name": "cavve-server",
+  "version": "1.0.0",
+  "description": "Colyseus server for Cavve multiplayer",
+  "main": "server/index.ts",
+  "scripts": {
+    "start": "tsx server/index.ts",
+    "dev": "tsx watch server/index.ts"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
