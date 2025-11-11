@@ -325,10 +325,15 @@ export default function BabylonSceneContent() {
         scene
       );
       
-      console.log('📍 Spawn point set: T-Rex Cinematic View');
+      // CRITICAL: Force camera to compute and render at spawn point immediately (before GLB loads)
+      camera.rebuildAnglesAndRadius();  // Rebuild internal position from alpha/beta/radius
+      scene.render();  // Force immediate render at correct position
+      
+      console.log('📍 Spawn point set: T-Rex Cinematic View (IMMEDIATE RENDER)');
       console.log(`  Camera target: (${CAVE_CENTER.x}, ${CAVE_CENTER.y}, ${CAVE_CENTER.z})`);
       console.log(`  Camera alpha: 0° (frontal) | beta: 55° (elevated) | radius: 14 units`);
       console.log(`  View: In front of cave, slightly above, looking down`);
+      console.log(`  Position computed: (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
       
       // Configure camera controls with proper touch gesture support
       camera.attachControl(canvasRef.current, true);
