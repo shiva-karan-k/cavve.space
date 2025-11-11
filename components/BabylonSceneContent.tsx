@@ -367,11 +367,11 @@ export default function BabylonSceneContent() {
       scene.imageProcessingConfiguration.vignetteWeight = 0.25; // More dramatic
       scene.imageProcessingConfiguration.vignetteCameraFov = 1.5; // Wider falloff
       
-      // Enhanced tone mapping for better contrast
+      // Tone mapping with WARM cast (not cool/blue)
       scene.imageProcessingConfiguration.toneMappingEnabled = true;
       scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC
-      scene.imageProcessingConfiguration.exposure = 1.2; // Brighter
-      scene.imageProcessingConfiguration.contrast = 1.15; // More contrast
+      scene.imageProcessingConfiguration.exposure = 0.95; // Slightly reduced to prevent blue wash
+      scene.imageProcessingConfiguration.contrast = 1.05; // Subtle contrast
       
       // FXAA for smooth edges
       pipeline.fxaaEnabled = true;
@@ -635,16 +635,16 @@ export default function BabylonSceneContent() {
         // Just enough ambient to make things visible, GLB emissives do the rest
         
         if (preset === 'default' || preset === 'dramatic') {
-          // BRIGHT, WARM ambient fill to match reference image
-          const baseAmbient = 5.0; // Very bright for even visibility
+          // Balanced ambient fill - warm yellow tones
+          const baseAmbient = 3.0; // Balanced brightness
           const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), scene);
           ambientLight.intensity = baseAmbient;
-          ambientLight.diffuse = new Color3(1.0, 0.95, 0.85); // Warm white (slight yellow tint)
-          ambientLight.groundColor = new Color3(0.3, 0.25, 0.2); // Warm ground fill
+          ambientLight.diffuse = new Color3(1.0, 0.85, 0.6); // Strong warm yellow tint
+          ambientLight.groundColor = new Color3(0.4, 0.3, 0.15); // Warm ground with more yellow
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
           
-          console.log(`✅ Bright WARM ambient lighting applied (${baseAmbient}) - matching reference brightness`);
+          console.log(`✅ Balanced WARM ambient (${baseAmbient}) with strong yellow tint`);
           
         } else if (preset === 'bright') {
           // Bright, even lighting
