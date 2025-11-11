@@ -713,32 +713,42 @@ export default function BabylonSceneContent() {
         scene.ambientColor = new Color3(0, 0, 0); // Pure black base for contrast
         
         if (preset === 'default' || preset === 'dramatic') {
-          // Professional cinematic setup: Key + Rim + Fill
-          // Key Light (Main illumination - warm golden)
-          const baseKeySpot = preset === 'dramatic' ? 700 : 400;
+          // Cinema-quality lighting: Strong golden spotlights (matches inspiration)
+          // Key Light (Main illumination - STRONG warm golden like inspiration)
+          const baseKeySpot = preset === 'dramatic' ? 2200 : 1800;
           const keyLight = new SpotLight('keyLight',
             new Vector3(0, 5, -3), // Position
             new Vector3(0, -1.2, 0), // Direction (down and forward)
-            Tools.ToRadians(32), // Angle
-            0.25, // Exponent
+            Tools.ToRadians(28), // Narrower angle for focused beam
+            0.15, // Lower exponent for sharper falloff and visible beams
             scene);
-          keyLight.diffuse = new Color3(1.0, 0.88, 0.55); // Warm golden
+          keyLight.diffuse = new Color3(1.0, 0.75, 0.35); // Warmer golden (2400K)
           keyLight.intensity = baseKeySpot * currentSceneLighting;
           keyLight.shadowEnabled = true;
+          keyLight.range = 50; // Extended range for better coverage
           lightsRef.current.keySpot = keyLight;
           baseIntensitiesRef.current.keySpot = baseKeySpot;
           
-          // Rim Light (Edge highlights - cool blue)
-          const baseRimSpot = preset === 'dramatic' ? 500 : 300;
+          // High-quality PCSS shadows for realistic soft shadows
+          const shadowGen = new ShadowGenerator(4096, keyLight);
+          shadowGen.useContactHardeningShadow = true;
+          shadowGen.contactHardeningLightSizeUVRatio = 0.05;
+          shadowGen.bias = 0.0001;
+          shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH;
+          shadowGen.darkness = 0.5; // Less darkness to see details
+          
+          // Rim Light (Edge highlights - STRONG golden accent like inspiration)
+          const baseRimSpot = preset === 'dramatic' ? 1800 : 1400;
           const rimLight = new SpotLight('rimLight',
             new Vector3(4.0, 2.2, 2.2), // Position
             new Vector3(-1, -0.3, -0.6), // Direction
-            Tools.ToRadians(25), // Angle
-            0.3, // Exponent
+            Tools.ToRadians(22), // Narrower for focused beam
+            0.2, // Sharper falloff for visible beam
             scene);
-          rimLight.diffuse = new Color3(0.75, 0.85, 1.0); // Cool blue
+          rimLight.diffuse = new Color3(1.0, 0.80, 0.40); // Warm golden (2500K)
           rimLight.intensity = baseRimSpot * currentSceneLighting;
-          rimLight.shadowEnabled = true;
+          rimLight.shadowEnabled = false; // Rim doesn't cast shadows
+          rimLight.range = 40;
           lightsRef.current.rimSpot = rimLight;
           baseIntensitiesRef.current.rimSpot = baseRimSpot;
           
