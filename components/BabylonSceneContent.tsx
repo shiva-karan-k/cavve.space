@@ -365,10 +365,10 @@ export default function BabylonSceneContent() {
       scene.imageProcessingConfiguration.vignetteWeight = 0.25; // More dramatic
       scene.imageProcessingConfiguration.vignetteCameraFov = 1.5; // Wider falloff
       
-      // Tone mapping - balanced for street lights
+      // Tone mapping - darker for street light contrast
       scene.imageProcessingConfiguration.toneMappingEnabled = true;
       scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC
-      scene.imageProcessingConfiguration.exposure = 0.90; // Slightly brighter for street lights
+      scene.imageProcessingConfiguration.exposure = 0.6; // Dark so street lights stand out
       scene.imageProcessingConfiguration.contrast = 1.0; // Neutral contrast
       
       // FXAA for smooth edges
@@ -954,7 +954,7 @@ export default function BabylonSceneContent() {
               const materials = Array.isArray(lampMesh.material) ? lampMesh.material : [lampMesh.material];
               materials.forEach((mat: any) => {
                 if (mat.emissiveColor || mat.emissiveTexture) {
-                  mat.emissiveIntensity = 10.0; // High glow for lamp meshes
+                  mat.emissiveIntensity = 6.0; // Lower - lamp mesh just glows, PointLights do the work
                   mat.disableLighting = true; // Meshes emit light, not receive
                   mat.markAsDirty();
                   emissiveMeshCount++;
@@ -962,7 +962,7 @@ export default function BabylonSceneContent() {
               });
             }
           });
-          console.log(`    ✅ Made ${emissiveMeshCount} yellow lamp materials emissive (intensity: 10.0)`);
+          console.log(`    ✅ Made ${emissiveMeshCount} yellow lamp materials emissive (intensity: 6.0)`);
           
           // Create ACTUAL PointLights at yellow lamp positions (Indian street light vibe)
           // Find 2 lamps: left entry + above car
@@ -979,22 +979,22 @@ export default function BabylonSceneContent() {
           let streetLightsCreated = 0;
           if (leftEntryLamp) {
             const streetLight = new PointLight('leftStreetLight', leftEntryLamp.getAbsolutePosition(), scene);
-            streetLight.intensity = 120; // Strong illumination
-            streetLight.range = 25; // Wide coverage
+            streetLight.intensity = 200; // MUCH stronger - actually illuminate the path
+            streetLight.range = 30; // Wide coverage
             streetLight.diffuse = new Color3(1.0, 0.75, 0.4); // Traditional Indian sodium vapor yellow-orange
-            streetLight.specular = new Color3(0.5, 0.35, 0.15); // Warm specular
+            streetLight.specular = new Color3(0.6, 0.45, 0.2); // Brighter specular for glossy surfaces
             streetLightsCreated++;
-            console.log(`    ✅ Created LEFT street light (Indian yellow)`);
+            console.log(`    ✅ Created LEFT street light (Indian yellow) - illuminates path`);
           }
           
           if (carLamp) {
             const streetLight = new PointLight('carStreetLight', carLamp.getAbsolutePosition(), scene);
-            streetLight.intensity = 120; // Strong illumination
-            streetLight.range = 25; // Wide coverage
+            streetLight.intensity = 200; // MUCH stronger - actually illuminate the car
+            streetLight.range = 30; // Wide coverage
             streetLight.diffuse = new Color3(1.0, 0.75, 0.4); // Traditional Indian sodium vapor yellow-orange
-            streetLight.specular = new Color3(0.5, 0.35, 0.15); // Warm specular
+            streetLight.specular = new Color3(0.6, 0.45, 0.2); // Brighter specular for glossy surfaces
             streetLightsCreated++;
-            console.log(`    ✅ Created CAR street light (Indian yellow)`);
+            console.log(`    ✅ Created CAR street light (Indian yellow) - illuminates car`);
           }
           
           console.log(`  ✅ Created ${streetLightsCreated} traditional Indian yellow street lights`);
