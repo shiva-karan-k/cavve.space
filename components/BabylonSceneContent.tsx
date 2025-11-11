@@ -2422,7 +2422,6 @@ export default function BabylonSceneContent() {
         
         // Unsubscribe from stores
         if (typeof unsubscribe !== 'undefined') unsubscribe();
-        if (typeof unsubscribeVibes !== 'undefined') unsubscribeVibes();
         
         // Remove movement observer
         if ((window as any).__movementObserver) {
