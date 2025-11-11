@@ -27,24 +27,11 @@ export const useVibesStore = create<VibesState>()(
     {
       name: 'vibes-storage',
       storage: typeof window !== 'undefined' ? createJSONStorage(() => localStorage) : undefined,
-      version: 1, // Add versioning to invalidate old cached data
-      migrate: (persistedState: any) => {
-        // If cached data is invalid or from old version, reset to default
-        try {
-          if (!persistedState || !persistedState.currentVibe) {
-            return { currentVibe: PRESETS.default, useWebGPU: true };
-          }
-          // Validate that currentVibe has all required properties
-          const vibe = persistedState.currentVibe;
-          if (!vibe.bloom || !vibe.fog || !vibe.key || !vibe.rim) {
-            console.warn('⚠️ Invalid cached vibe data, resetting to default');
-            return { currentVibe: PRESETS.default, useWebGPU: true };
-          }
-          return persistedState;
-        } catch (e) {
-          console.error('❌ Error migrating vibe storage:', e);
-          return { currentVibe: PRESETS.default, useWebGPU: true };
-        }
+      version: 2, // FORCE RESET - discard old dark presets
+      migrate: (persistedState: any, version: number) => {
+        // ALWAYS reset to new bright default when version changes
+        console.log(`🔄 Vibes storage version ${version} - resetting to bright default`);
+        return { currentVibe: PRESETS.default, useWebGPU: true };
       },
     }
   )

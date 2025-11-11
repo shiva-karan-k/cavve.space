@@ -679,7 +679,7 @@ export default function BabylonSceneContent() {
           const baseAmbient = preset === 'dramatic' ? currentAmbient * 0.5 : currentAmbient;
           const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 100, 0), scene);
           ambientLight.intensity = baseAmbient * currentSceneLighting;
-          ambientLight.diffuse = new Color3(1, 1, 1);
+      ambientLight.diffuse = new Color3(1, 1, 1);
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
           
@@ -2102,14 +2102,8 @@ export default function BabylonSceneContent() {
             
             // NOW apply initial vibe after scene is fully loaded and textures ready
             // Longer delay to ensure everything is settled
-            setTimeout(() => {
-              if (pipelineRef.current && lightsRef.current.keySpot) {
-                console.log('🎨 Scene fully loaded and ready, applying initial vibe...');
-                applyVibe(scene, currentVibe);
-              } else {
-                console.warn('⚠️ Pipeline or lights not ready for vibe application');
-              }
-            }, 800); // Increased from 500ms to 800ms
+            // VIBES DISABLED - Don't apply any vibe settings
+            console.log('✅ Scene fully loaded - vibes system disabled, keeping default lighting');
           };
           
           // Start waiting for textures
