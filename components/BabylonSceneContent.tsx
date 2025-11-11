@@ -631,57 +631,19 @@ export default function BabylonSceneContent() {
           return;
         }
         
-        // ===== CINEMATIC LIGHTING SETUP =====
-        // Based on professional 3-point lighting + environment
-        scene.ambientColor = new Color3(0, 0, 0); // Pure black base for contrast
+        // ===== SIMPLE AMBIENT FILL - LET GLB HANDLE THE REST =====
+        // Just enough ambient to make things visible, GLB emissives do the rest
         
         if (preset === 'default' || preset === 'dramatic') {
-          // BRIGHT EVEN LIGHTING - Significantly increased for visibility
-          
-          // KEY LIGHT: Bright overhead fill
-          const baseKeySpot = preset === 'dramatic' ? 3500 : 2500;
-          const keyLight = new SpotLight('keyLight',
-            new Vector3(0, 10, 0), // Directly above center
-            new Vector3(0, -1, 0), // Straight down
-            Tools.ToRadians(60), // VERY WIDE angle for maximum coverage
-            0.5, // Soft, diffused light
-            scene);
-          keyLight.diffuse = new Color3(1.0, 0.95, 0.85); // Neutral warm white (5500K)
-          keyLight.intensity = baseKeySpot * currentSceneLighting;
-          keyLight.shadowEnabled = true;
-          keyLight.range = 100; // Extended range
-          lightsRef.current.keySpot = keyLight;
-          baseIntensitiesRef.current.keySpot = baseKeySpot;
-          
-          // Soft shadows
-          const shadowGen = new ShadowGenerator(2048, keyLight);
-          shadowGen.useBlurExponentialShadowMap = true;
-          shadowGen.blurScale = 4;
-          shadowGen.bias = 0.0001;
-          shadowGen.darkness = 0.2; // Lighter shadows
-          
-          // RIM LIGHT: Additional bright fill
-          const baseRimSpot = preset === 'dramatic' ? 3000 : 2200;
-          const rimLight = new SpotLight('rimLight',
-            new Vector3(0, 10, -5), // Elevated back
-            new Vector3(0, -1, 0.2), // Angled down and forward
-            Tools.ToRadians(60), // VERY WIDE angle
-            0.5, // Soft diffused
-            scene);
-          rimLight.diffuse = new Color3(1.0, 0.95, 0.85); // Matching neutral warm white
-          rimLight.intensity = baseRimSpot * currentSceneLighting;
-          rimLight.shadowEnabled = false;
-          rimLight.range = 100;
-          lightsRef.current.rimSpot = rimLight;
-          baseIntensitiesRef.current.rimSpot = baseRimSpot;
-          
-          // Fill Light (Significant ambient for overall visibility)
-          const baseAmbient = preset === 'dramatic' ? 1.0 : 1.5;
-          const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 100, 0), scene);
-          ambientLight.intensity = baseAmbient * currentSceneLighting;
-          ambientLight.diffuse = new Color3(1, 1, 1);
+          // MINIMAL ambient fill for visibility
+          const baseAmbient = 0.5; // Subtle fill light
+          const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), scene);
+          ambientLight.intensity = baseAmbient;
+          ambientLight.diffuse = new Color3(0.8, 0.8, 0.9); // Slight cool tint
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
+          
+          console.log(`✅ Minimal ambient lighting applied (${baseAmbient}) - GLB emissives handle the rest`);
           
         } else if (preset === 'bright') {
           // Bright, even lighting
@@ -1718,11 +1680,8 @@ export default function BabylonSceneContent() {
                   // Force shader compilation by marking material as dirty
                   mat.markAsDirty();
                   
-                  // DON'T override metallic/roughness - preserve original dirty/grungy PBR look
-                  // Just ensure environment lighting works
-                  if (mat.metallicFactor !== undefined || mat.roughnessFactor !== undefined) {
-                    mat.environmentIntensity = 1.0;
-                  }
+                  // DON'T TOUCH MATERIALS - Let GLB materials render as-is
+                  // Preserve original PBR values completely
                   
                   // For PBR materials, ensure all shader features are enabled
                   if (mat.getClassName && mat.getClassName() === 'PBRMaterial') {
