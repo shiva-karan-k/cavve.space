@@ -459,11 +459,16 @@ export default function BabylonSceneContent() {
           console.log(`💡 Using ${glbLightsCount} GLB lights (enabled: ${enabled})`);
           
           if (!enabled) {
-            // Dark mode: disable all GLB lights
-            console.log('🌑 Dark mode: Disabling all GLB lights');
+            // Dark mode: disable all GLB lights (but keep custom street lights)
+            console.log('🌑 Dark mode: Disabling all GLB lights (keeping custom street lights)');
             scene.lights.forEach((light: any) => {
-              light.setEnabled(false);
-              console.log(`  ❌ Disabled light: ${light.name || 'unnamed'}`);
+              // Don't disable custom street lights - they stay on always
+              if (!light.isCustomStreetLight) {
+                light.setEnabled(false);
+                console.log(`  ❌ Disabled light: ${light.name || 'unnamed'}`);
+              } else {
+                console.log(`  ✅ Keeping custom street light: ${light.name || 'unnamed'}`);
+              }
             });
             scene.ambientColor = new Color3(0, 0, 0);
             
@@ -502,8 +507,11 @@ export default function BabylonSceneContent() {
             // Light mode: enable all GLB lights and restore base intensities
             console.log('💡 Light mode: Enabling all GLB lights and restoring base intensities');
             
-            // CRITICAL: Save base intensities if not already saved
+            // CRITICAL: Save base intensities if not already saved (skip custom street lights)
             scene.lights.forEach((light: any) => {
+              // Skip custom street lights - they manage their own intensity
+              if (light.isCustomStreetLight) return;
+              
               const lightKey = Object.keys(lightsRef.current).find(key => 
                 lightsRef.current[key as keyof typeof lightsRef.current] === light
               );
@@ -517,8 +525,14 @@ export default function BabylonSceneContent() {
               }
             });
             
-            // Now restore lights
+            // Now restore lights (skip custom street lights)
             scene.lights.forEach((light: any) => {
+              // Skip custom street lights - they're always on
+              if (light.isCustomStreetLight) {
+                console.log(`  ⏭️ Skipping custom street light: ${light.name || 'unnamed'} (always on)`);
+                return;
+              }
+              
               light.setEnabled(true);
               console.log(`  🔦 Restoring light: ${light.name || 'unnamed'}`);
               
@@ -1038,6 +1052,10 @@ export default function BabylonSceneContent() {
               light.range = 28; // Good coverage per light
               light.diffuse = sodiumColor;
               light.specular = sodiumSpecular;
+              
+              // CRITICAL: Mark as custom light so light switch doesn't disable it
+              (light as any).isCustomStreetLight = true;
+              
               streetLightsCreated++;
               
               const p = lamp.getAbsolutePosition();
