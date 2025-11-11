@@ -2498,7 +2498,7 @@ export default function BabylonSceneContent() {
       return () => {}; // Return empty cleanup on error
     }
     })(); // Close async IIFE and return cleanup
-  }, [currentVibe, useWebGPU]);
+  }, [useWebGPU]); // Removed currentVibe dependency - vibes system disabled
 
   return (
     <canvas
