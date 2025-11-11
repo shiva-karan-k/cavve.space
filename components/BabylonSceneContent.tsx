@@ -38,7 +38,6 @@ export default function BabylonSceneContent() {
   const sceneRef = useRef<Scene | null>(null);
   const avatarRef = useRef<AbstractMesh | null>(null);
   const pipelineRef = useRef<DefaultRenderingPipeline | null>(null);
-  const gizmoManagerRef = useRef<GizmoManager | null>(null);
   
   const { lightsEnabled, currentPreset, ambientIntensity, sceneLightingIntensity } = useLightingStore();
   const { cameraMode } = useCameraStore();
@@ -98,23 +97,11 @@ export default function BabylonSceneContent() {
         console.log(`✅ Using default environment (intensity: ${vibe.envIntensity})`);
       }
     
-    // Add hemisphere fill light for bright showcase modes
-    if (vibe.envIntensity >= 0.4) {
-      // For bright modes, add minimal hemisphere fill if not already present
-      let hemisphereLight = scene.getLightByName('vibes_hemisphere_fill') as HemisphericLight;
-      if (!hemisphereLight) {
-        hemisphereLight = new HemisphericLight('vibes_hemisphere_fill', new Vector3(0, 1, 0), scene);
-      }
-      hemisphereLight.intensity = 0.12;  // Subtle fill
-      hemisphereLight.diffuse = new Color3(0.95, 0.95, 1.0);  // Slightly cool
-      console.log(`✅ Hemisphere fill added for bright mode (intensity: 0.12)`);
-    } else {
-      // Remove hemisphere fill for dark modes
-      const hemisphereLight = scene.getLightByName('vibes_hemisphere_fill');
-      if (hemisphereLight) {
-        hemisphereLight.dispose();
-        console.log(`🗑️ Hemisphere fill removed for dark mode`);
-      }
+    // Remove any hemisphere fill - caves should be naturally dark
+    const hemisphereLight = scene.getLightByName('vibes_hemisphere_fill');
+    if (hemisphereLight) {
+      hemisphereLight.dispose();
+      console.log(`🗑️ Hemisphere fill removed - using GLB native lighting only`);
     }
     
     // Tone mapping and exposure

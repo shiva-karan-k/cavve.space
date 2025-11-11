@@ -12,16 +12,16 @@ export type Vibe = {
 };
 
 export const PRESETS: Record<string, Vibe> = {
-  // Default mode - Cinema-quality lighting with visible beams (matches inspiration)
+  // Default mode - Dark moody cave with selective lighting
   default: {
     env: "",
-    envIntensity: 0.35,  // Lower env for better contrast
-    exposure: 1.25,  // Higher exposure to see details
-    bloom: { enabled: true, threshold: 0.95, weight: 0.18 },  // More bloom for light glow
-    fog: { enabled: true, density: 0.008 },  // Higher fog for visible light beams
-    key: { intensity: 2200, angle: 28, kelvin: 2400 },  // Stronger, warmer golden spotlight
-    rim: { intensity: 1800, angle: 22, kelvin: 2500 },  // Stronger golden accent
-    emissiveIntensity: 6.5,  // Brighter screens
+    envIntensity: 0.08,  // Very low ambient - cave should be dark
+    exposure: 0.85,  // Lower exposure for darker atmosphere
+    bloom: { enabled: true, threshold: 1.05, weight: 0.14 },  // Subtle bloom
+    fog: { enabled: true, density: 0.006 },  // Moderate fog
+    key: { intensity: 800, angle: 32, kelvin: 2800 },  // Moderate golden spotlight
+    rim: { intensity: 600, angle: 25, kelvin: 3000 },  // Moderate accent light
+    emissiveIntensity: 5.0,  // Glowing screens stand out in darkness
   },
   
   // Reference look
