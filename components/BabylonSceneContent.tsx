@@ -297,6 +297,14 @@ export default function BabylonSceneContent() {
       
       console.log('✅ Scene created with GPU acceleration enabled');
       
+      // Create a simple test sphere so scene is visible even if GLB fails
+      const testSphere = MeshBuilder.CreateSphere('testSphere', { diameter: 2 }, scene);
+      testSphere.position = new Vector3(0, 2, 0);
+      const testMaterial = new StandardMaterial('testMat', scene);
+      testMaterial.emissiveColor = new Color3(0.5, 0.5, 1.0); // Blue glow
+      testSphere.material = testMaterial;
+      console.log('✅ Test sphere created - scene should be visible');
+      
       // Disable Babylon.js default loading screen
       engine.loadingScreen.displayLoadingUI = () => {};
       engine.loadingScreen.hideLoadingUI = () => {};
@@ -2172,16 +2180,30 @@ export default function BabylonSceneContent() {
           });
           console.log('💡 Make sure the_batcave.glb is in the /public folder');
           console.log('💡 Check browser Network tab for 404 errors');
-          // Keep scene visible even on error - show error message
+          console.log('💡 Scene will continue with test sphere visible');
+          
+          // Show non-intrusive error notification
           const errorDiv = document.createElement('div');
-          errorDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: red; padding: 20px; border: 2px solid red; z-index: 10000; font-family: monospace;';
+          errorDiv.id = 'glb-load-error';
+          errorDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(220, 38, 38, 0.95); color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; font-family: monospace; font-size: 12px; max-width: 80%; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
           errorDiv.innerHTML = `
-            <h2>❌ Failed to load 3D scene</h2>
-            <p>Error: ${error.message || 'Unknown error'}</p>
-            <p>Check console for details</p>
-            <p>GLB Path: /the_batcave.glb</p>
+            <div style="font-weight: bold; margin-bottom: 4px;">⚠️ GLB File Not Found</div>
+            <div style="font-size: 11px; opacity: 0.9;">Check console for details. Scene is rendering with test sphere.</div>
           `;
+          // Remove existing error if present
+          const existingError = document.getElementById('glb-load-error');
+          if (existingError) existingError.remove();
           document.body.appendChild(errorDiv);
+          
+          // Auto-hide after 10 seconds
+          setTimeout(() => {
+            const err = document.getElementById('glb-load-error');
+            if (err) err.style.opacity = '0';
+            setTimeout(() => {
+              const err2 = document.getElementById('glb-load-error');
+              if (err2) err2.remove();
+            }, 300);
+          }, 10000);
         });
 
       // Keyboard controls - attach to canvas and window for maximum coverage
