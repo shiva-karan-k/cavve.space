@@ -368,7 +368,7 @@ export default function BabylonSceneContent() {
       // Tone mapping - balanced for street lights
       scene.imageProcessingConfiguration.toneMappingEnabled = true;
       scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC
-      scene.imageProcessingConfiguration.exposure = 0.95; // Increased brightness - golden lights visible
+      scene.imageProcessingConfiguration.exposure = 0.75; // Lower exposure - prevent blown-out whites
       scene.imageProcessingConfiguration.contrast = 1.0; // Neutral contrast
       
       // FXAA for smooth edges
@@ -990,7 +990,7 @@ export default function BabylonSceneContent() {
               const materials = Array.isArray(lampMesh.material) ? lampMesh.material : [lampMesh.material];
               materials.forEach((mat: any) => {
                 if (mat.emissiveColor || mat.emissiveTexture) {
-                  mat.emissiveIntensity = 15.0; // VERY BRIGHT GLOW!
+                  mat.emissiveIntensity = 5.0; // Moderate glow (not blinding)
                   mat.disableLighting = true; // Self-illuminated
                   mat.markAsDirty();
                   brightLampCount++;
@@ -1034,8 +1034,8 @@ export default function BabylonSceneContent() {
                 2, // Soft falloff
                 scene
               );
-              light.intensity = 600; // Good balance (not too bright)
-              light.range = 35;
+              light.intensity = 100; // MUCH LOWER - 36 lights is a lot!
+              light.range = 20; // Shorter range to reduce overlap
               light.diffuse = sodiumColor;
               light.specular = sodiumSpecular;
               streetLightsCreated++;
