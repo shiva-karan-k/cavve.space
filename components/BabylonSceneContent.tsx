@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Engine, Scene, HemisphericLight, DirectionalLight, PointLight, SpotLight, Vector3, FreeCamera, ArcRotateCamera, ShadowGenerator, PBRMaterial, StandardMaterial, Color3, Color4, MeshBuilder, Tools, AbstractMesh, Light, GizmoManager, DefaultRenderingPipeline, CubeTexture, KeyboardEventTypes, WebGPUEngine } from '@babylonjs/core';
+import { Engine, Scene, HemisphericLight, DirectionalLight, PointLight, SpotLight, Vector3, FreeCamera, ArcRotateCamera, ShadowGenerator, PBRMaterial, StandardMaterial, Color3, Color4, MeshBuilder, Tools, AbstractMesh, Light, DefaultRenderingPipeline, CubeTexture, KeyboardEventTypes, WebGPUEngine } from '@babylonjs/core';
 import { SceneLoader } from '@babylonjs/core/Loading/sceneLoader';
 import { DracoCompression } from '@babylonjs/core/Meshes/Compression/dracoCompression';
 import { AdvancedDynamicTexture, Rectangle } from '@babylonjs/gui';
@@ -365,7 +365,6 @@ export default function BabylonSceneContent() {
       // GPU-accelerated vignette
       scene.imageProcessingConfiguration.vignetteEnabled = true;
       scene.imageProcessingConfiguration.vignetteWeight = 0.25; // More dramatic
-      scene.imageProcessingConfiguration.vignetteBlend = 1.0; // Full blend
       scene.imageProcessingConfiguration.vignetteCameraFov = 1.5; // Wider falloff
       
       // Enhanced tone mapping for better contrast
