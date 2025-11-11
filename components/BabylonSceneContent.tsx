@@ -629,66 +629,9 @@ export default function BabylonSceneContent() {
           return;
         }
         
-        // ===== SIMPLE AMBIENT FILL - LET GLB HANDLE THE REST =====
-        // Just enough ambient to make things visible, GLB emissives do the rest
-        
-        if (preset === 'default' || preset === 'dramatic') {
-          // Subtle ambient fill - neutral cave tones with slight warmth
-          const baseAmbient = 1.8; // Lower intensity (was 3.0 - too bright)
-      const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), scene);
-          ambientLight.intensity = baseAmbient;
-          ambientLight.diffuse = new Color3(0.95, 0.92, 0.88); // Subtle warm (mostly neutral)
-          ambientLight.groundColor = new Color3(0.15, 0.15, 0.15); // Neutral grey ground
-          lightsRef.current.ambient = ambientLight;
-          baseIntensitiesRef.current.ambient = baseAmbient;
-          
-          console.log(`✅ Subtle neutral ambient (${baseAmbient}) - cave vibes`);
-          
-        } else if (preset === 'bright') {
-          // Bright, even lighting
-          const baseAmbient = currentAmbient * 2;
-          const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 100, 0), scene);
-          ambientLight.intensity = baseAmbient * currentSceneLighting;
-          ambientLight.diffuse = new Color3(1, 1, 1);
-          lightsRef.current.ambient = ambientLight;
-          baseIntensitiesRef.current.ambient = baseAmbient;
-          
-          const baseMainDir = 3.0;
-      const mainLight = new DirectionalLight('mainLight', new Vector3(0, -1, -0.5), scene);
-      mainLight.position = new Vector3(0, 10, 0);
-          mainLight.intensity = baseMainDir * currentSceneLighting;
-      mainLight.diffuse = new Color3(1, 0.95, 0.9);
-          lightsRef.current.mainDir = mainLight;
-          baseIntensitiesRef.current.mainDir = baseMainDir;
-          
-        } else if (preset === 'moody') {
-          // Very dark, minimal lighting
-          const baseAmbient = currentAmbient * 0.3;
-          const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 100, 0), scene);
-          ambientLight.intensity = baseAmbient * currentSceneLighting;
-          ambientLight.diffuse = new Color3(0.5, 0.5, 0.6);
-          lightsRef.current.ambient = ambientLight;
-          baseIntensitiesRef.current.ambient = baseAmbient;
-          
-          const baseKeySpot = 300;
-          const keyLight = new SpotLight('keyLight',
-            new Vector3(0, 5, -3),
-            new Vector3(0, -1.2, 0),
-            Tools.ToRadians(20),
-            0.2,
-            scene);
-          keyLight.diffuse = new Color3(1.0, 0.9, 0.7);
-          keyLight.intensity = baseKeySpot * currentSceneLighting;
-          lightsRef.current.keySpot = keyLight;
-          baseIntensitiesRef.current.keySpot = baseKeySpot;
-        }
-        
-        // Re-expose refs after creating lights
-        (window as any).__babylonLightsRef = lightsRef;
-        (window as any).__babylonBaseIntensitiesRef = baseIntensitiesRef;
-        
-        console.log(`✅ Cinematic lighting preset "${preset}" applied (enabled: ${enabled}, ambient: ${currentAmbient.toFixed(3)}, scene lighting: ${currentSceneLighting.toFixed(2)})`);
-        console.log(`   Lights created: ${Object.keys(lightsRef.current).length}`);
+        // ===== USE ONLY GLB LIGHTS - NO MANUAL LIGHT CREATION =====
+        console.log(`🔴 USING ONLY GLB LIGHTS - No manual light creation`);
+        console.log(`   GLB lights available: ${scene.lights.length}`);
       };
       
       // Expose lights refs globally so LightsPanel can access them (do this early)
