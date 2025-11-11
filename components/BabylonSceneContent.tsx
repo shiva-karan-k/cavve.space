@@ -301,7 +301,7 @@ export default function BabylonSceneContent() {
       // ===== SPAWN POINT - T-Rex Cinematic View =====
       // Position: In front of cave, elevated, looking down (like the T-Rex looking at prey)
       const CAVE_CENTER = new Vector3(0, 1.5, 0);    // Center of cave, slightly elevated
-      
+
       // Start with ArcRotateCamera for better initial view
       camera = new ArcRotateCamera(
         'camera',
@@ -381,77 +381,9 @@ export default function BabylonSceneContent() {
       
       console.log('✅ GPU-accelerated post-processing pipeline created with enhanced quality');
 
-      // Create gizmo manager for light manipulation
-      const gizmos = new GizmoManager(scene);
-      gizmoManagerRef.current = gizmos;
-      gizmos.positionGizmoEnabled = false;
-      gizmos.rotationGizmoEnabled = false;
-      gizmos.scaleGizmoEnabled = false;
-      gizmos.usePointerToAttachGizmos = false;
-      if (gizmos.gizmos.positionGizmo) {
-        gizmos.gizmos.positionGizmo.updateGizmoRotationToMatchAttachedMesh = false;
-      }
-      
-      // Hotkeys for gizmo modes (W/E/R)
-      scene.onKeyboardObservable.add((kb) => {
-        if (kb.type !== KeyboardEventTypes.KEYDOWN) return;
-        const key = kb.event.key.toLowerCase();
-        if (key === 'w') {
-          gizmos.positionGizmoEnabled = true;
-          gizmos.rotationGizmoEnabled = false;
-          gizmos.scaleGizmoEnabled = false;
-        } else if (key === 'e') {
-          gizmos.positionGizmoEnabled = false;
-          gizmos.rotationGizmoEnabled = true;
-          gizmos.scaleGizmoEnabled = false;
-        } else if (key === 'r') {
-          gizmos.positionGizmoEnabled = false;
-          gizmos.rotationGizmoEnabled = false;
-          gizmos.scaleGizmoEnabled = true;
-        }
-      });
-      
-      // Expose gizmo manager globally
-      (window as any).__babylonGizmoManager = gizmos;
+      // Expose scene for debugging
       (window as any).__babylonScene = scene;
-      
-      // Gizmo API functions with enhanced logging
-      (window as any).__babylonListLights = () => {
-        console.log('📋 Listing lights:', scene.lights.length);
-        scene.lights.forEach((l, i) => console.log(`  [${i}] ${l.name}`));
-        return scene.lights as Light[];
-      };
-      
-      (window as any).__babylonSelectLight = (name: string) => {
-        console.log(`🎯 Selecting light: ${name}`);
-        const l = scene.getLightByName(name);
-        if (l) {
-          gizmos.attachToNode(l);
-          console.log(`✅ Gizmo attached to ${name}`);
-        } else {
-          console.warn(`⚠️ Light not found: ${name}`);
-        }
-      };
-      
-      (window as any).__babylonSetGizmosEnabled = (on: boolean) => {
-        console.log(`🔧 Setting gizmos enabled: ${on}`);
-        gizmos.positionGizmoEnabled = on;
-        gizmos.rotationGizmoEnabled = on;
-        gizmos.scaleGizmoEnabled = false;
-        console.log(`✅ Gizmos ${on ? 'enabled' : 'disabled'}`);
-      };
-      
-      (window as any).__babylonSetGizmoMode = (mode: 'translate' | 'rotate' | 'scale') => {
-        console.log(`🔧 Setting gizmo mode: ${mode}`);
-        gizmos.positionGizmoEnabled = (mode === 'translate');
-        gizmos.rotationGizmoEnabled = (mode === 'rotate');
-        gizmos.scaleGizmoEnabled = (mode === 'scale');
-        console.log(`✅ Gizmo mode set to ${mode}`);
-      };
-      
-      console.log('✅ Gizmo manager created and API exposed globally');
-      console.log('   Test gizmos: window.__babylonListLights()');
-      console.log('   Scene available: window.__babylonScene');
+      console.log('✅ Scene exposed globally: window.__babylonScene');
 
       // Apply scene lighting multiplier to all lights
       const applySceneLighting = (multiplier: number) => {
@@ -2502,7 +2434,7 @@ export default function BabylonSceneContent() {
       console.log('🎬 Starting render loop...');
       engine.runRenderLoop(() => {
         if (scene) {
-          scene.render();
+        scene.render();
         }
       });
       console.log('✅ Render loop started! Scene will render even if GLB fails to load.');
