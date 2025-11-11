@@ -958,14 +958,15 @@ export default function BabylonSceneContent() {
       
       console.log('📦 Loading batcave model...');
       // Enable Draco compression support for compressed GLB
+      // Babylon.js needs the JS wrapper, not direct WASM
       DracoCompression.Configuration = {
         decoder: {
-          wasmUrl: '/draco/draco_decoder_gltf.wasm',
+          wasmUrl: '/draco/draco_wasm_wrapper_gltf.js',
           wasmBinaryUrl: '/draco/draco_decoder_gltf.wasm',
-          fallbackUrl: '/draco/draco_decoder_gltf.wasm',
+          fallbackUrl: '/draco/draco_decoder_gltf.js',
         }
       };
-      console.log('✅ Draco decoder configured for compressed GLB');
+      console.log('✅ Draco decoder configured (JS wrapper + WASM binary)');
       
       // Use AppendAsync to load FULL scene including environment textures and backgrounds
       // Add cache busting for production deployments
