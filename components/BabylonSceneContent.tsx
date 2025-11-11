@@ -567,22 +567,40 @@ export default function BabylonSceneContent() {
             console.log('🌑 Dark mode activated - all GLB lights off, pure black, screens stay bright');
             return;
           } else {
-            // Light mode: enable all GLB lights and apply scene lighting multiplier
-            console.log('💡 Light mode: Enabling all GLB lights');
+            // Light mode: enable all GLB lights and restore base intensities
+            console.log('💡 Light mode: Enabling all GLB lights and restoring base intensities');
             scene.lights.forEach((light: any) => {
               light.setEnabled(true);
-              if (light.intensity !== undefined) {
-                // Find base intensity from our refs
-                const lightKey = Object.keys(lightsRef.current).find(key => 
-                  lightsRef.current[key as keyof typeof lightsRef.current] === light
-                );
-                if (lightKey && baseIntensitiesRef.current[lightKey as keyof typeof baseIntensitiesRef.current] !== undefined) {
-                  const baseIntensity = baseIntensitiesRef.current[lightKey as keyof typeof baseIntensitiesRef.current] || light.intensity;
-                  light.intensity = baseIntensity * currentSceneLighting;
+              console.log(`  🔦 Restoring light: ${light.name || 'unnamed'}`);
+              
+              // Find this light in our refs and restore its base intensity
+              const lightKey = Object.keys(lightsRef.current).find(key => 
+                lightsRef.current[key as keyof typeof lightsRef.current] === light
+              );
+              
+              if (lightKey && baseIntensitiesRef.current[lightKey as keyof typeof baseIntensitiesRef.current] !== undefined) {
+                // Restore from saved base intensity
+                const baseIntensity = baseIntensitiesRef.current[lightKey as keyof typeof baseIntensitiesRef.current] as number;
+                light.intensity = baseIntensity * currentSceneLighting;
+                console.log(`    ✅ Restored from base: ${baseIntensity.toFixed(2)} × ${currentSceneLighting.toFixed(2)} = ${light.intensity.toFixed(2)}`);
+              } else if (light.intensity !== undefined && light.intensity > 0) {
+                // Light already has intensity, just apply scene multiplier
+                const currentIntensity = light.intensity;
+                light.intensity = currentIntensity * currentSceneLighting;
+                console.log(`    ⚠️ No base found, using current: ${currentIntensity.toFixed(2)} × ${currentSceneLighting.toFixed(2)} = ${light.intensity.toFixed(2)}`);
+              } else {
+                // Light has zero intensity, try to restore from GLB defaults
+                // This shouldn't happen if we properly saved base intensities
+                console.warn(`    ❌ Light ${light.name} has no base intensity and current is 0!`);
+                // Set a reasonable default based on light type
+                if (light.constructor.name === 'HemisphericLight') {
+                  light.intensity = 0.5 * currentSceneLighting;
+                } else if (light.constructor.name === 'DirectionalLight') {
+                  light.intensity = 1.0 * currentSceneLighting;
                 } else {
-                  // Apply multiplier to existing intensity
-                  light.intensity = light.intensity * currentSceneLighting;
+                  light.intensity = 1.0 * currentSceneLighting;
                 }
+                console.log(`    🔧 Applied default intensity: ${light.intensity.toFixed(2)}`);
               }
             });
             
@@ -931,26 +949,40 @@ export default function BabylonSceneContent() {
       // Use a flag to prevent multiple rapid applications
       let isApplyingVibe = false;
       
+      let vibeQueue: any = null;
+      
       const unsubscribeVibes = useVibesStore.subscribe((state) => {
-        // Skip if already applying
+        // If already applying, queue the new vibe instead of skipping
         if (isApplyingVibe) {
-          console.log('⏩ Skipping vibe application (already in progress)');
+          console.log('⏩ Vibe applying, queuing new one...');
+          vibeQueue = state.currentVibe;
           return;
         }
         
-        console.log('🎨 Vibe store changed, checking if ready to apply...');
-        console.log('  Scene ready:', !!sceneRef.current);
-        console.log('  Pipeline ready:', !!pipelineRef.current);
-        console.log('  Lights ready:', !!lightsRef.current.keySpot);
+        console.log('🎨 Applying vibe smoothly (scene stays visible)...');
         
         if (sceneRef.current && pipelineRef.current && lightsRef.current.keySpot) {
-          console.log('✅ All systems ready, applying vibe...');
           isApplyingVibe = true;
+          
+          // Apply vibe without clearing or reloading scene
           applyVibe(sceneRef.current, state.currentVibe);
-          // Reset flag after a short delay
-          setTimeout(() => { isApplyingVibe = false; }, 200);
+          
+          // Reset flag and process queue after smooth transition
+          setTimeout(() => { 
+            isApplyingVibe = false;
+            
+            // Process queued vibe if any
+            if (vibeQueue && sceneRef.current) {
+              console.log('📋 Applying queued vibe...');
+              const queuedVibe = vibeQueue;
+              vibeQueue = null;
+              isApplyingVibe = true;
+              applyVibe(sceneRef.current, queuedVibe);
+              setTimeout(() => { isApplyingVibe = false; }, 300);
+            }
+          }, 300);
         } else {
-          console.warn('⚠️ Scene not ready yet, vibe will be applied after scene loads');
+          console.warn('⚠️ Scene not ready, vibe will apply after load');
         }
       });
       
@@ -958,23 +990,19 @@ export default function BabylonSceneContent() {
       
       console.log('📦 Loading batcave model...');
       
-      // SIMPLER DRACO CONFIG: Just point to the decoder files
-      // Babylon will handle the rest
-      console.log('🔧 Configuring Draco decoder...');
-      DracoCompression.Configuration.decoder = {
-        wasmUrl: '/draco/draco_decoder_gltf.js',
-        wasmBinaryUrl: '/draco/draco_decoder_gltf.wasm',
-        fallbackUrl: '/draco/draco_decoder_gltf.js',
-      };
-      console.log('✅ Draco decoder configured');
+      // Load GLB from GitHub Releases (hosted separately due to 100MB limit)
+      // Fallback to local file for development
+      const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+      const glbUrl = isProduction 
+        ? 'https://github.com/shiva-karan-k/cavve/releases/download/v1.0/the_batcave.glb'
+        : '/the_batcave.glb';
       
-      // Use AppendAsync to load FULL scene including environment textures and backgrounds
-      const glbPath = '/the_batcave.glb?v=' + Date.now();
-      console.log(`📂 Loading GLB from: ${glbPath}`);
-      console.log('📦 GLB is Draco-compressed (47.49 MB)');
-      console.log('⏳ This may take 5-10 seconds to decompress...');
+      console.log(`📂 Loading GLB from: ${glbUrl}`);
+      console.log(`📦 Environment: ${isProduction ? 'PRODUCTION (GitHub Releases)' : 'LOCAL'}`);
+      console.log('📦 File size: 121 MB uncompressed');
+      console.log('⏳ This may take 10-15 seconds to load...');
       
-      SceneLoader.AppendAsync('/', 'the_batcave.glb?v=' + Date.now(), scene, (event) => {
+      SceneLoader.AppendAsync(isProduction ? glbUrl : '/', isProduction ? '' : 'the_batcave.glb', scene, (event) => {
         if (event.lengthComputable) {
           const progress = (event.loaded / event.total * 100).toFixed(1);
           console.log(`📥 Loading progress: ${progress}%`);
