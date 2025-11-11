@@ -165,11 +165,6 @@ export const useProjectStore = create<ProjectStore>()(
           section.blocks.flatMap((block) => block.items)
         );
         set({ projects: allProjects });
-        console.log('Projects initialized:', {
-          sections: initialSections.length,
-          lifeSection: initialSections.find(s => s.id === 'life'),
-          totalProjects: allProjects.length
-        });
       },
       addProject: (project) =>
         set((state) => ({

@@ -246,12 +246,10 @@ export default function UIOverlay() {
       {/* Bottom right - Light Switch and Controls */}
       <div className="absolute bottom-4 right-4 pointer-events-auto z-50">
         <div className="flex items-center gap-2">
-          {/* Light Switch Button - just the switch */}
+          {/* Light Switch Button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // TODO: Implement light toggle
-              console.log('Light toggle clicked');
             }}
             className="w-12 h-12 border-2 border-white/30 hover:border-white hover:bg-white/10 text-white rounded-lg font-semibold transition-all flex items-center justify-center text-xl"
             title="Toggle Lights"
@@ -263,8 +261,6 @@ export default function UIOverlay() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // TODO: Implement controls panel
-              console.log('Controls clicked');
             }}
             className="px-4 py-2 border-2 border-white/30 hover:border-white hover:bg-white/10 text-white rounded font-semibold transition-all"
             title="Controls"

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Engine, Scene, HemisphericLight, DirectionalLight, PointLight, Vector3, FreeCamera, ArcRotateCamera, ShadowGenerator, PBRMaterial, StandardMaterial, Color3, Color4, PhotoDome, MeshBuilder } from '@babylonjs/core';
+import { Engine, Scene, HemisphericLight, DirectionalLight, PointLight, Vector3, FreeCamera, ArcRotateCamera, ShadowGenerator, PBRMaterial, StandardMaterial, Color3, Color4, MeshBuilder } from '@babylonjs/core';
 import { SceneLoader } from '@babylonjs/core/Loading/sceneLoader';
 import { AdvancedDynamicTexture, Rectangle } from '@babylonjs/gui';
 import '@babylonjs/loaders/glTF';
@@ -114,44 +114,6 @@ export default function BabylonSceneContent() {
       
       console.log('✅ Enhanced lights created');
       
-      // Create space backdrop/skybox
-      // Using PhotoDome for equirectangular space texture
-      // You can replace this with your own space HDRI from ambientCG, NASA, or OpenGameArt
-      // NOTE: Commented out by default - the GLB model may already have a background
-      // Uncomment and add your space texture to enable
-      /*
-      let spaceDome: PhotoDome | null = null;
-      
-      // Try to load space texture - PhotoDome will handle missing textures gracefully
-      // Place your space texture at /public/textures/space-background.jpg (or .hdr, .exr)
-      try {
-        spaceDome = new PhotoDome(
-          'spaceDome',
-          '/textures/space-background.jpg', // Change this path to your space texture
-          {
-            size: 1000,
-            useDirectMapping: false,
-            resolution: 64, // Higher resolution for better quality
-          },
-          scene,
-          false // Don't generate mipmaps for performance
-        );
-        
-        // Disable lighting on skybox so it doesn't get washed out by scene lights
-        if (spaceDome.material) {
-          (spaceDome.material as any).disableLighting = true;
-        }
-        
-        console.log('✅ Space backdrop created');
-      } catch (error: any) {
-        console.warn('⚠️ Space texture not found:', error?.message || error);
-        console.log('💡 To add a space backdrop:');
-        console.log('   1. Download a free space HDRI from ambientCG, NASA, or OpenGameArt');
-        console.log('   2. Place it in /public/textures/space-background.jpg');
-        console.log('   3. Refresh the page');
-        // Fallback: dark background (already set in scene.clearColor)
-      }
-      */
       console.log('📦 Loading batcave model...');
       // Use AppendAsync to load FULL scene including environment textures and backgrounds
       SceneLoader.AppendAsync('/', 'the_batcave.glb', scene)

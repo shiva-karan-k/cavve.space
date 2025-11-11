@@ -3,7 +3,6 @@
 import { Suspense } from 'react';
 import BabylonScene from '@/components/BabylonScene';
 import UIOverlay from '@/components/UIOverlay';
-import { crashLogger } from '@/utils/crashLogger';
 
 export default function Home() {
   return (

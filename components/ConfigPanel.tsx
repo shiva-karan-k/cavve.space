@@ -17,8 +17,6 @@ export default function ConfigPanel({ onClose }: ConfigPanelProps) {
 
   useEffect(() => {
     initializeProjects();
-    console.log('ConfigPanel: Initialized projects', { sectionsCount: sections.length });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initializeProjects]);
 
   useEffect(() => {
@@ -51,11 +49,6 @@ export default function ConfigPanel({ onClose }: ConfigPanelProps) {
     return projects.find((p) => p.id === projectId);
   };
 
-  // Debug: Log sections when they change
-  useEffect(() => {
-    console.log('ConfigPanel sections:', sections);
-    console.log('Life section:', sections.find(s => s.id === 'life'));
-  }, [sections]);
 
   return (
     <div 
