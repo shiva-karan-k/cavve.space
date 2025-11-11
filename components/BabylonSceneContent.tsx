@@ -116,11 +116,11 @@ export default function BabylonSceneContent() {
       pipelineRef.current.bloomWeight = vibe.bloom.weight;
     }
     
-    // Fog
+    // Fog (black, not blue)
     if (vibe.fog.enabled) {
       scene.fogMode = Scene.FOGMODE_EXP2;
       scene.fogDensity = vibe.fog.density;
-      scene.fogColor = new Color3(0.02, 0.02, 0.02);
+      scene.fogColor = new Color3(0, 0, 0);  // Pure black fog
     } else {
       scene.fogMode = Scene.FOGMODE_NONE;
     }
@@ -289,7 +289,7 @@ export default function BabylonSceneContent() {
       const testSphere = MeshBuilder.CreateSphere('testSphere', { diameter: 2 }, scene);
       testSphere.position = new Vector3(0, 2, 0);
       const testMaterial = new StandardMaterial('testMat', scene);
-      testMaterial.emissiveColor = new Color3(0.5, 0.5, 1.0); // Blue glow
+      testMaterial.emissiveColor = new Color3(0.8, 0.6, 0.2); // Warm golden glow
       testSphere.material = testMaterial;
       console.log('✅ Test sphere created - scene should be visible');
       
