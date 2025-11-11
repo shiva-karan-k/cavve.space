@@ -298,26 +298,26 @@ export default function BabylonSceneContent() {
       engine.loadingScreen.hideLoadingUI = () => {};
       console.log('✅ Babylon loading screen disabled');
 
-      // ===== SPAWN POINT - High overhead view =====
-      const CAVE_CENTER = new Vector3(0, 0, 0);    // Center of cave floor
+      // ===== SPAWN POINT - Looking directly at the screens/center from elevated front =====
+      const CAVE_CENTER = new Vector3(0, 2, 0);    // Center elevated to screen height
 
-      // High overhead camera looking down at cave
+      // Camera positioned in FRONT and ABOVE, looking down at the main screens/car
       camera = new ArcRotateCamera(
         'camera',
-        Tools.ToRadians(-90),  // Alpha: -90° = from the side
-        Tools.ToRadians(35),   // Beta: 35° = steep overhead angle
-        25,                    // Radius: 25 units away for full overview
+        Tools.ToRadians(0),    // Alpha: 0° = directly in front (facing -Z)
+        Tools.ToRadians(65),   // Beta: 65° = looking down from above
+        20,                    // Radius: 20 units back
         CAVE_CENTER,
         scene
       );
       
-      // CRITICAL: Force camera to compute and render at spawn point immediately (before GLB loads)
+      // CRITICAL: Force camera to compute and render at spawn point immediately
       camera.rebuildAnglesAndRadius();
       scene.render();
       
-      console.log('📍 Spawn: High overhead view of cave');
+      console.log('📍 Spawn: Front elevated view looking at cave center');
       console.log(`  Target: (${CAVE_CENTER.x}, ${CAVE_CENTER.y}, ${CAVE_CENTER.z})`);
-      console.log(`  Alpha: -90° | Beta: 35° | Radius: 25`);
+      console.log(`  Alpha: 0° | Beta: 65° | Radius: 20`);
       console.log(`  Position: (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
       
       // Configure camera controls with proper touch gesture support
@@ -985,23 +985,35 @@ export default function BabylonSceneContent() {
           const lampMeshes = emissiveMeshes.length >= 2 ? emissiveMeshes : lampMeshesByName;
           console.log(`  ✅ Using ${lampMeshes.length} lamp meshes for light creation`);
           
-          // DON'T create yellow point lights - they flood everything!
-          // Instead, boost the emissive intensity of the yellow lamp meshes
-          console.log('  💡 Boosting emissive intensity for yellow lamp meshes...');
-          lampMeshes.forEach((lampMesh: any) => {
+          // CREATE actual PointLights at yellow lamp positions for volumetric lighting
+          console.log('  💡 Creating PointLights at yellow lamp positions...');
+          let lightsCreated = 0;
+          lampMeshes.slice(0, 8).forEach((lampMesh: any) => { // Limit to 8 lights for performance
             if (lampMesh.material) {
               const materials = Array.isArray(lampMesh.material) ? lampMesh.material : [lampMesh.material];
               materials.forEach((mat: any) => {
                 if (mat.emissiveColor || mat.emissiveTexture) {
-                  // MUCH higher intensity for yellow lamps (was 5.0)
+                  // Boost emissive for glow effect
                   mat.emissiveIntensity = 15.0;
                   mat.markAsDirty();
-                  console.log(`    ✅ Boosted emissive for ${lampMesh.name}: intensity = 15.0`);
                 }
               });
+              
+              // Create PointLight at lamp position
+              const lampLight = new PointLight(
+                `lampLight_${lampMesh.name}`,
+                lampMesh.getAbsolutePosition(), // Use lamp's actual position
+                scene
+              );
+              lampLight.intensity = 50; // Moderate intensity (not flooding)
+              lampLight.range = 15; // Light reaches 15 units
+              lampLight.diffuse = new Color3(1.0, 0.8, 0.4); // Warm yellow
+              lampLight.specular = new Color3(0.5, 0.4, 0.2); // Subtle specular
+              lightsCreated++;
+              console.log(`    ✅ Created PointLight at ${lampMesh.name}: pos (${lampMesh.getAbsolutePosition().x.toFixed(1)}, ${lampMesh.getAbsolutePosition().y.toFixed(1)}, ${lampMesh.getAbsolutePosition().z.toFixed(1)})`);
             }
           });
-          console.log('  ✅ Yellow lamps boosted - using emissive materials only (no point lights)');
+          console.log(`  ✅ Created ${lightsCreated} volumetric yellow PointLights`);
           
           console.log('✅ GLB native lights loaded and stored as default preset');
           console.log('🖼️ Textures:', scene.textures.length);
