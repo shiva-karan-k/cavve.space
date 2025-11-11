@@ -15,7 +15,7 @@ export default function IPlane() {
   return (
     <>
       <div className={`absolute top-0 bottom-0 pointer-events-auto z-50 flex items-center transition-all duration-300 ${
-        isHovered ? 'left-0 w-64' : '-left-12 w-16'
+        isHovered ? 'left-0 w-64' : 'left-0 w-16'
       }`}>
         <div 
           className={`bg-black/90 backdrop-blur-sm flex flex-col relative transition-all duration-300 ${

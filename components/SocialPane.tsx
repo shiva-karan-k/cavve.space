@@ -80,7 +80,7 @@ export default function SocialPane({ people }: SocialPaneProps) {
   return (
     <>
       <div className={`absolute top-0 bottom-0 pointer-events-auto z-50 flex items-center transition-all duration-300 ${
-        isHovered ? 'right-0 w-80' : '-right-12 w-20'
+        isHovered ? 'right-0 w-80' : 'right-0 w-20'
       }`}>
         <div 
           className={`bg-black/90 backdrop-blur-sm flex flex-col overflow-y-auto overflow-x-visible relative transition-all duration-300 ${
