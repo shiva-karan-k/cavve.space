@@ -1064,43 +1064,10 @@ export default function BabylonSceneContent() {
           const lampMeshes = emissiveMeshes.length >= 2 ? emissiveMeshes : lampMeshesByName;
           console.log(`  ✅ Using ${lampMeshes.length} lamp meshes for light creation`);
           
-          if (lampMeshes.length >= 2) {
-            // Create point lights at lamp positions
-            const lamp1Pos = lampMeshes[0].getAbsolutePosition();
-            const pointLight1 = new PointLight('yellowVolumetric1', lamp1Pos, scene);
-            pointLight1.intensity = 800;
-            pointLight1.diffuse = new Color3(1.0, 0.65, 0.1); // Warm yellow-orange
-            pointLight1.range = 40;
-            lightsRef.current.point1 = pointLight1;
-            baseIntensitiesRef.current.point1 = 800;
-            console.log(`  ✅ Created volumetric light at ${lampMeshes[0].name}: ${lamp1Pos}`);
-            
-            const lamp2Pos = lampMeshes[1].getAbsolutePosition();
-            const pointLight2 = new PointLight('yellowVolumetric2', lamp2Pos, scene);
-            pointLight2.intensity = 800;
-            pointLight2.diffuse = new Color3(1.0, 0.65, 0.1); // Warm yellow-orange
-            pointLight2.range = 40;
-            lightsRef.current.point2 = pointLight2;
-            baseIntensitiesRef.current.point2 = 800;
-            console.log(`  ✅ Created volumetric light at ${lampMeshes[1].name}: ${lamp2Pos}`);
-          } else {
-            console.log('  ⚠️ Not enough lamp meshes found, using default positions');
-            // Fallback positions based on reference image
-            const pointLight1 = new PointLight('yellowVolumetric1', new Vector3(-6, 4, -2), scene);
-            pointLight1.intensity = 800;
-            pointLight1.diffuse = new Color3(1.0, 0.65, 0.1);
-            pointLight1.range = 40;
-            lightsRef.current.point1 = pointLight1;
-            baseIntensitiesRef.current.point1 = 800;
-            
-            const pointLight2 = new PointLight('yellowVolumetric2', new Vector3(6, 4, 1), scene);
-            pointLight2.intensity = 800;
-            pointLight2.diffuse = new Color3(1.0, 0.65, 0.1);
-            pointLight2.range = 40;
-            lightsRef.current.point2 = pointLight2;
-            baseIntensitiesRef.current.point2 = 800;
-            console.log('  ✅ Created volumetric lights at default positions');
-          }
+          // DON'T create yellow point lights - they flood everything!
+          // The emissive materials + scene lighting handle visibility
+          // Yellow lamps are already glowing from their emissive textures
+          console.log('  ✅ Skipping light creation - using emissive materials + scene lighting only');
           
           console.log('✅ GLB native lights loaded and stored as default preset');
           console.log('🖼️ Textures:', scene.textures.length);
