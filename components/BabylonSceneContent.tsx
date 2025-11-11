@@ -298,29 +298,27 @@ export default function BabylonSceneContent() {
       engine.loadingScreen.hideLoadingUI = () => {};
       console.log('✅ Babylon loading screen disabled');
 
-      // ===== SPAWN POINT - T-Rex Cinematic View =====
-      // Position: In front of cave, elevated, looking down (like the T-Rex looking at prey)
-      const CAVE_CENTER = new Vector3(0, 1.5, 0);    // Center of cave, slightly elevated
+      // ===== SPAWN POINT - High overhead view =====
+      const CAVE_CENTER = new Vector3(0, 0, 0);    // Center of cave floor
 
-      // Start with ArcRotateCamera for better initial view
+      // High overhead camera looking down at cave
       camera = new ArcRotateCamera(
         'camera',
-        Tools.ToRadians(0),    // Alpha: 0° = frontal view (looking straight at cave)
-        Tools.ToRadians(55),   // Beta: 55° = elevated angle (looking down from above)
-        14,                    // Radius: 14 units back (frontal + slightly elevated)
-        CAVE_CENTER,           // Target: look at cave center
+        Tools.ToRadians(-90),  // Alpha: -90° = from the side
+        Tools.ToRadians(35),   // Beta: 35° = steep overhead angle
+        25,                    // Radius: 25 units away for full overview
+        CAVE_CENTER,
         scene
       );
       
       // CRITICAL: Force camera to compute and render at spawn point immediately (before GLB loads)
-      camera.rebuildAnglesAndRadius();  // Rebuild internal position from alpha/beta/radius
-      scene.render();  // Force immediate render at correct position
+      camera.rebuildAnglesAndRadius();
+      scene.render();
       
-      console.log('📍 Spawn point set: T-Rex Cinematic View (IMMEDIATE RENDER)');
-      console.log(`  Camera target: (${CAVE_CENTER.x}, ${CAVE_CENTER.y}, ${CAVE_CENTER.z})`);
-      console.log(`  Camera alpha: 0° (frontal) | beta: 55° (elevated) | radius: 14 units`);
-      console.log(`  View: In front of cave, slightly above, looking down`);
-      console.log(`  Position computed: (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
+      console.log('📍 Spawn: High overhead view of cave');
+      console.log(`  Target: (${CAVE_CENTER.x}, ${CAVE_CENTER.y}, ${CAVE_CENTER.z})`);
+      console.log(`  Alpha: -90° | Beta: 35° | Radius: 25`);
+      console.log(`  Position: (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
       
       // Configure camera controls with proper touch gesture support
       camera.attachControl(canvasRef.current, true);
@@ -988,9 +986,22 @@ export default function BabylonSceneContent() {
           console.log(`  ✅ Using ${lampMeshes.length} lamp meshes for light creation`);
           
           // DON'T create yellow point lights - they flood everything!
-          // The emissive materials + scene lighting handle visibility
-          // Yellow lamps are already glowing from their emissive textures
-          console.log('  ✅ Skipping light creation - using emissive materials + scene lighting only');
+          // Instead, boost the emissive intensity of the yellow lamp meshes
+          console.log('  💡 Boosting emissive intensity for yellow lamp meshes...');
+          lampMeshes.forEach((lampMesh: any) => {
+            if (lampMesh.material) {
+              const materials = Array.isArray(lampMesh.material) ? lampMesh.material : [lampMesh.material];
+              materials.forEach((mat: any) => {
+                if (mat.emissiveColor || mat.emissiveTexture) {
+                  // MUCH higher intensity for yellow lamps (was 5.0)
+                  mat.emissiveIntensity = 15.0;
+                  mat.markAsDirty();
+                  console.log(`    ✅ Boosted emissive for ${lampMesh.name}: intensity = 15.0`);
+                }
+              });
+            }
+          });
+          console.log('  ✅ Yellow lamps boosted - using emissive materials only (no point lights)');
           
           console.log('✅ GLB native lights loaded and stored as default preset');
           console.log('🖼️ Textures:', scene.textures.length);
