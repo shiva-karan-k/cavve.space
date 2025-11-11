@@ -38,5 +38,8 @@ next-env.d.ts
 .cursorrules
 /learnings
 
+# large model files - using Git LFS, but keep models folder excluded
+/models
+
 
 
