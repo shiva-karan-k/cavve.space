@@ -12,15 +12,15 @@ export type Vibe = {
 };
 
 export const PRESETS: Record<string, Vibe> = {
-  // Default mode - Evenly lit cave with warm yellow ambient (like reference image)
+  // Default mode - BRIGHT evenly lit cave (matches reference image brightness)
   default: {
     env: "",
-    envIntensity: 0.25,  // Higher ambient for even lighting across scene
-    exposure: 1.05,  // Brighter exposure to see all details
-    bloom: { enabled: true, threshold: 1.05, weight: 0.15 },  // Moderate bloom
-    fog: { enabled: true, density: 0.005 },  // Light fog for atmosphere
-    key: { intensity: 1200, angle: 45, kelvin: 2800 },  // Wider, softer yellow fill
-    rim: { intensity: 900, angle: 45, kelvin: 2800 },  // Wider, softer yellow fill
+    envIntensity: 0.45,  // HIGH ambient - everything should be visible
+    exposure: 1.35,  // MUCH brighter - details must be clearly visible
+    bloom: { enabled: true, threshold: 1.1, weight: 0.12 },  // Subtle bloom
+    fog: { enabled: true, density: 0.003 },  // Minimal fog
+    key: { intensity: 1600, angle: 60, kelvin: 2800 },  // Very wide, bright fill
+    rim: { intensity: 1400, angle: 60, kelvin: 2800 },  // Very wide, bright fill
     emissiveIntensity: 5.5,  // Bright glowing screens
   },
   
