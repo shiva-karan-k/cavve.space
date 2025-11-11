@@ -637,7 +637,7 @@ export default function BabylonSceneContent() {
           console.log('⚠️ GLB has 0 lights - adding fallback HemisphericLight');
           
           // Fallback ambient light (balanced cave lighting)
-          const baseAmbient = 2.2; // Lower from 3.5 - was too bright
+          const baseAmbient = 4.0; // Increased from 2.2 per user request
           const ambientLight = new HemisphericLight('fallbackAmbient', new Vector3(0, 1, 0), scene);
           ambientLight.intensity = baseAmbient * currentSceneLighting;
           ambientLight.diffuse = new Color3(0.92, 0.92, 0.92); // Neutral grey (no warm tint)
