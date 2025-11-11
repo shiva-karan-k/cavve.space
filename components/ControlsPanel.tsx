@@ -1,14 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useLightingStore } from '@/store/lightingStore';
-
 interface ControlsPanelProps {
   onClose: () => void;
 }
 
 export default function ControlsPanel({ onClose }: ControlsPanelProps) {
-  const { sceneLightingIntensity, setSceneLightingIntensity } = useLightingStore();
   
   return (
     <div 
@@ -75,38 +71,6 @@ export default function ControlsPanel({ onClose }: ControlsPanelProps) {
             <div className="flex justify-between">
               <span>Toggle 1st/3rd Person</span>
               <kbd className="px-2 py-1 bg-gray-800 rounded text-xs">F</kbd>
-            </div>
-          </div>
-        </div>
-        
-        <div>
-          <h3 className="text-white font-semibold mb-2">Lighting</h3>
-          <div className="space-y-2 ml-4">
-            <div className="flex items-center justify-between">
-              <span>Scene Lighting</span>
-              <span className="text-xs text-gray-400">{(sceneLightingIntensity * 100).toFixed(0)}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="2"
-              step="0.01"
-              value={sceneLightingIntensity}
-              onChange={(e) => {
-                const value = parseFloat(e.target.value);
-                console.log(`🎚️ Scene lighting slider changed: ${value.toFixed(2)}`);
-                setSceneLightingIntensity(value);
-              }}
-              onInput={(e) => {
-                const value = parseFloat((e.target as HTMLInputElement).value);
-                console.log(`🎚️ Scene lighting slider input: ${value.toFixed(2)}`);
-                setSceneLightingIntensity(value);
-              }}
-              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-white"
-            />
-            <div className="flex justify-between text-xs text-gray-400">
-              <span>Dark</span>
-              <span>Bright</span>
             </div>
           </div>
         </div>
