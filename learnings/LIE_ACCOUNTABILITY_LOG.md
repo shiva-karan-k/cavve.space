@@ -98,7 +98,32 @@ I **FUNDAMENTALLY DON'T UNDERSTAND** why the scene is dark:
 ### WHAT I SHOULD ADMIT:
 "I don't know why it's dark. Let me ask you to check console logs and tell me what you see so I can understand the actual state instead of guessing."
 
-### DARK DAYS COUNTER: 🔴🔴 **2 FULL DAYS WASTED**
+### DARK DAYS COUNTER: 🔴🔴🔴 **3 FULL DAYS WASTED**
+
+### DARK DAY #3: "Back to dark knight mode" (2025-01-11 Evening - Post GLB-only rule)
+
+**WHAT I DID:**
+- Removed ALL manual light creation per user request
+- Used ONLY `scene.lights` from GLB file
+
+**USER EVIDENCE:**
+- Screenshot shows pitch black scene
+- Only screens (emissive) and tiny yellow dots visible
+- Car, cave walls completely invisible
+- "back into dark days again what the hell cursor"
+
+**ROOT PROBLEM:**
+- GLB file apparently has 0 lights OR lights are too weak
+- Strictly following "use only GLB lights" = unusable scene
+- Didn't check if GLB had ANY lights before committing
+
+**WHAT I SHOULD HAVE DONE:**
+1. Check `scene.lights.length` FIRST
+2. If 0 lights: Ask user for fallback strategy
+3. Test the result before claiming it works
+4. NOT blindly remove all lights without verification
+
+**TIME WASTED:** Another full day of back-and-forth
 
 ---
 
