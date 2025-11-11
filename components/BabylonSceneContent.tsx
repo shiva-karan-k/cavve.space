@@ -365,11 +365,11 @@ export default function BabylonSceneContent() {
       scene.imageProcessingConfiguration.vignetteWeight = 0.25; // More dramatic
       scene.imageProcessingConfiguration.vignetteCameraFov = 1.5; // Wider falloff
       
-      // Tone mapping with WARM cast (not cool/blue)
+      // Tone mapping - neutral for grungy PBR materials
       scene.imageProcessingConfiguration.toneMappingEnabled = true;
       scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC
-      scene.imageProcessingConfiguration.exposure = 0.95; // Slightly reduced to prevent blue wash
-      scene.imageProcessingConfiguration.contrast = 1.05; // Subtle contrast
+      scene.imageProcessingConfiguration.exposure = 1.0; // Neutral exposure - let GLB materials show
+      scene.imageProcessingConfiguration.contrast = 1.0; // Neutral contrast (no boosting)
       
       // FXAA for smooth edges
       pipeline.fxaaEnabled = true;
@@ -633,16 +633,16 @@ export default function BabylonSceneContent() {
         // Just enough ambient to make things visible, GLB emissives do the rest
         
         if (preset === 'default' || preset === 'dramatic') {
-          // Balanced ambient fill - warm yellow tones
-          const baseAmbient = 3.0; // Balanced brightness
-          const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), scene);
+          // Subtle ambient fill - neutral cave tones with slight warmth
+          const baseAmbient = 1.8; // Lower intensity (was 3.0 - too bright)
+      const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), scene);
           ambientLight.intensity = baseAmbient;
-          ambientLight.diffuse = new Color3(1.0, 0.85, 0.6); // Strong warm yellow tint
-          ambientLight.groundColor = new Color3(0.4, 0.3, 0.15); // Warm ground with more yellow
+          ambientLight.diffuse = new Color3(0.95, 0.92, 0.88); // Subtle warm (mostly neutral)
+          ambientLight.groundColor = new Color3(0.15, 0.15, 0.15); // Neutral grey ground
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
           
-          console.log(`✅ Balanced WARM ambient (${baseAmbient}) with strong yellow tint`);
+          console.log(`✅ Subtle neutral ambient (${baseAmbient}) - cave vibes`);
           
         } else if (preset === 'bright') {
           // Bright, even lighting
@@ -985,48 +985,22 @@ export default function BabylonSceneContent() {
           const lampMeshes = emissiveMeshes.length >= 2 ? emissiveMeshes : lampMeshesByName;
           console.log(`  ✅ Using ${lampMeshes.length} lamp meshes for light creation`);
           
-          // Create ONLY 2 yellow PointLights: one at left entry, one above car
-          console.log('  💡 Creating ONLY 2 yellow PointLights (left entry + above car)...');
+          // Make yellow lamp MESHES glow (emissive ONLY - no light creation)
+          console.log('  💡 Making yellow lamp MESHES emissive (NO light creation)...');
           
-          // Log all lamp positions to find the right ones
-          console.log('  📍 All lamp positions:');
-          lampMeshes.forEach((lampMesh: any, idx: number) => {
-            const pos = lampMesh.getAbsolutePosition();
-            console.log(`    [${idx}] ${lampMesh.name}: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`);
+          lampMeshes.forEach((lampMesh: any) => {
+            if (lampMesh.material) {
+              const materials = Array.isArray(lampMesh.material) ? lampMesh.material : [lampMesh.material];
+              materials.forEach((mat: any) => {
+                if (mat.emissiveColor || mat.emissiveTexture) {
+                  mat.emissiveIntensity = 8.0; // Moderate glow (not too bright)
+                  mat.disableLighting = true; // Meshes emit light, not receive
+                  mat.markAsDirty();
+                }
+              });
+            }
           });
-          
-          // Find lamp near left entry (negative X, elevated Y)
-          const leftEntryLamp = lampMeshes.find((lamp: any) => {
-            const pos = lamp.getAbsolutePosition();
-            return pos.x < -3 && pos.y > 2; // Left side, elevated
-          });
-          
-          // Find lamp above car (near center, high Y)
-          const carLamp = lampMeshes.find((lamp: any) => {
-            const pos = lamp.getAbsolutePosition();
-            return Math.abs(pos.x) < 3 && Math.abs(pos.z) < 3 && pos.y > 3; // Center, high up
-          });
-          
-          let lightsCreated = 0;
-          if (leftEntryLamp) {
-            const light = new PointLight('leftEntryLight', leftEntryLamp.getAbsolutePosition(), scene);
-            light.intensity = 80;
-            light.range = 20;
-            light.diffuse = new Color3(1.0, 0.8, 0.4); // Warm yellow
-            lightsCreated++;
-            console.log(`    ✅ Created LEFT ENTRY light at ${leftEntryLamp.name}`);
-          }
-          
-          if (carLamp) {
-            const light = new PointLight('carLight', carLamp.getAbsolutePosition(), scene);
-            light.intensity = 80;
-            light.range = 20;
-            light.diffuse = new Color3(1.0, 0.8, 0.4); // Warm yellow
-            lightsCreated++;
-            console.log(`    ✅ Created CAR light at ${carLamp.name}`);
-          }
-          
-          console.log(`  ✅ Created ONLY ${lightsCreated} yellow PointLights (not 8!)`);
+          console.log(`    ✅ Made ${lampMeshes.length} yellow lamp meshes emissive (NO PointLights created)`);
           
           console.log('✅ GLB native lights loaded and stored as default preset');
           console.log('🖼️ Textures:', scene.textures.length);
