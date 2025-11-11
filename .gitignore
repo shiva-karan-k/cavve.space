@@ -44,11 +44,5 @@ next-env.d.ts
 
 
 
-# Backup files
-the_batcave_original_backup.glb
-
-# GLB backups
-the_batcave_draco_compressed_backup.glb
-
-# Large GLB - hosted on GitHub Releases
+# Large GLB - hosted externally (Vercel Blob)
 the_batcave.glb
