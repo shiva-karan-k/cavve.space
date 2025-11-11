@@ -990,11 +990,10 @@ export default function BabylonSceneContent() {
       
       console.log('📦 Loading batcave model...');
       
-      // Load GLB - Production uses CDN with CORS, Local uses /public
-      // Temporary: Using CORS proxy until we upload to Vercel Blob
+      // Load GLB - Production uses Vercel Blob (CORS-friendly), Local uses /public
       const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
-      const glbUrl = isProduction 
-        ? 'https://cors-anywhere.herokuapp.com/https://github.com/shiva-karan-k/cavve/releases/download/v1.0/the_batcave.glb'
+      const glbUrl = isProduction
+        ? 'https://dkpyy8zashbhkgoe.public.blob.vercel-storage.com/the_batcave.glb'
         : '/the_batcave.glb';
       
       console.log(`📂 Loading GLB from: ${glbUrl}`);
