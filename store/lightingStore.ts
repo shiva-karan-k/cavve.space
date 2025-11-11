@@ -43,6 +43,16 @@ export const useLightingStore = create<LightingState>()(
     {
       name: 'lighting-storage',
       storage: typeof window !== 'undefined' ? createJSONStorage(() => localStorage) : undefined,
+      version: 2, // FORCE RESET - discard old bright/moody presets
+      migrate: () => {
+        console.log('🔄 Lighting storage reset to default balanced preset');
+        return {
+          lightsEnabled: true,
+          currentPreset: 'default',
+          ambientIntensity: 0.08,
+          sceneLightingIntensity: 1.0
+        };
+      },
     }
   )
 );
