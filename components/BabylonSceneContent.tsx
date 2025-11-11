@@ -1,20 +1,184 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Engine, Scene, HemisphericLight, DirectionalLight, PointLight, Vector3, FreeCamera, ArcRotateCamera, ShadowGenerator, PBRMaterial, StandardMaterial, Color3, Color4, MeshBuilder } from '@babylonjs/core';
+import { Engine, Scene, HemisphericLight, DirectionalLight, PointLight, SpotLight, Vector3, FreeCamera, ArcRotateCamera, ShadowGenerator, PBRMaterial, StandardMaterial, Color3, Color4, MeshBuilder, Tools, AbstractMesh, Light, GizmoManager, DefaultRenderingPipeline, CubeTexture, KeyboardEventTypes, WebGPUEngine } from '@babylonjs/core';
 import { SceneLoader } from '@babylonjs/core/Loading/sceneLoader';
 import { AdvancedDynamicTexture, Rectangle } from '@babylonjs/gui';
 import '@babylonjs/loaders/glTF';
+import '@babylonjs/loaders/OBJ';
 import { useProjectStore } from '@/store/projectStore';
+import { useLightingStore } from '@/store/lightingStore';
+import { useCameraStore } from '@/store/cameraStore';
+import { useVibesStore } from '@/store/vibesStore';
+import { Vibe } from '@/types/vibes';
 
 export default function BabylonSceneContent() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const freeCameraModeRef = useRef(false);
+  const lightsRef = useRef<{
+    ambient?: HemisphericLight;
+    fill?: HemisphericLight;
+    keySpot?: SpotLight;
+    rimSpot?: SpotLight;
+    mainDir?: DirectionalLight;
+    point1?: PointLight;
+    point2?: PointLight;
+  }>({});
+  const baseIntensitiesRef = useRef<{
+    ambient?: number;
+    fill?: number;
+    keySpot?: number;
+    rimSpot?: number;
+    mainDir?: number;
+    point1?: number;
+    point2?: number;
+  }>({});
+  const screenMaterialsRef = useRef<Array<{ material: any; baseEmissive: Color3 }>>([]);
+  const sceneRef = useRef<Scene | null>(null);
+  const avatarRef = useRef<AbstractMesh | null>(null);
+  const pipelineRef = useRef<DefaultRenderingPipeline | null>(null);
+  const gizmoManagerRef = useRef<GizmoManager | null>(null);
+  
+  const { lightsEnabled, currentPreset, ambientIntensity, sceneLightingIntensity } = useLightingStore();
+  const { cameraMode } = useCameraStore();
+  const { currentVibe, useWebGPU } = useVibesStore();
+
+  // Helper function: Kelvin to RGB conversion
+  const kelvinToRGB = (k: number): Color3 => {
+    const t = k / 100;
+    const r = t <= 66 ? 255 : Math.max(0, Math.min(255, 329.698727446 * Math.pow(t - 60, -0.1332047592)));
+    const g = t <= 66
+      ? Math.max(0, Math.min(255, 99.4708025861 * Math.log(t) - 161.1195681661))
+      : Math.max(0, Math.min(255, 288.1221695283 * Math.pow(t - 60, -0.0755148492)));
+    const b = t >= 66 ? 255 : t <= 19 ? 0 : Math.max(0, Math.min(255, 138.5177312231 * Math.log(t - 10) - 305.0447927307));
+    return new Color3(r / 255, g / 255, b / 255);
+  };
+
+  // Helper function: Normalize emissive materials
+  const normalizeEmissives = (scene: Scene, intensity: number) => {
+    for (const mat of scene.materials) {
+      const p = mat as PBRMaterial;
+      if (!p) continue;
+      const hasEm = !!p.emissiveTexture || (p.emissiveColor && (p.emissiveColor.r > 0.01 || p.emissiveColor.g > 0.01 || p.emissiveColor.b > 0.01));
+      if (hasEm) {
+        if (!p.emissiveColor || (p.emissiveColor.r < 0.01 && p.emissiveColor.g < 0.01 && p.emissiveColor.b < 0.01)) {
+          p.emissiveColor = Color3.White();
+        }
+        (p as any).emissiveIntensity = intensity;
+      }
+      if (p.albedoTexture) p.albedoTexture.gammaSpace = true;
+      if ((p as any).metallicTexture) (p as any).metallicTexture.gammaSpace = false;
+      p.useRoughnessFromMetallicTextureGreen = true;
+      p.useMetallnessFromMetallicTextureBlue = true;
+      p.useAmbientOcclusionFromMetallicTextureRed = true;
+    }
+  };
+
+  // Helper function: Apply vibe to scene
+  const applyVibe = (scene: Scene, vibe: Vibe) => {
+    if (!scene || !pipelineRef.current) return;
+    
+    console.log('🎨 Applying vibe:', vibe);
+    
+      // Environment texture - only load if env path is provided
+      if (vibe.env && vibe.env.trim() !== '') {
+        try {
+          scene.environmentTexture = CubeTexture.CreateFromPrefilteredData(vibe.env, scene);
+          scene.environmentIntensity = vibe.envIntensity;
+          console.log(`✅ Environment texture: ${vibe.env} (intensity: ${vibe.envIntensity})`);
+        } catch (e) {
+          console.warn('⚠️ Could not load environment texture:', vibe.env, e);
+          // Fallback to default environment intensity
+          scene.environmentIntensity = vibe.envIntensity;
+        }
+      } else {
+        // Use default environment intensity without loading external file
+        scene.environmentIntensity = vibe.envIntensity;
+        console.log(`✅ Using default environment (intensity: ${vibe.envIntensity})`);
+      }
+    
+    // Add hemisphere fill light for bright showcase modes
+    if (vibe.envIntensity >= 0.4) {
+      // For bright modes, add minimal hemisphere fill if not already present
+      let hemisphereLight = scene.getLightByName('vibes_hemisphere_fill') as HemisphericLight;
+      if (!hemisphereLight) {
+        hemisphereLight = new HemisphericLight('vibes_hemisphere_fill', new Vector3(0, 1, 0), scene);
+      }
+      hemisphereLight.intensity = 0.12;  // Subtle fill
+      hemisphereLight.diffuse = new Color3(0.95, 0.95, 1.0);  // Slightly cool
+      console.log(`✅ Hemisphere fill added for bright mode (intensity: 0.12)`);
+    } else {
+      // Remove hemisphere fill for dark modes
+      const hemisphereLight = scene.getLightByName('vibes_hemisphere_fill');
+      if (hemisphereLight) {
+        hemisphereLight.dispose();
+        console.log(`🗑️ Hemisphere fill removed for dark mode`);
+      }
+    }
+    
+    // Tone mapping and exposure
+    scene.imageProcessingConfiguration.toneMappingEnabled = true;
+    scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC tone mapping
+    scene.imageProcessingConfiguration.exposure = vibe.exposure;
+    
+    // Bloom
+    if (pipelineRef.current) {
+      pipelineRef.current.bloomEnabled = vibe.bloom.enabled;
+      pipelineRef.current.bloomThreshold = vibe.bloom.threshold;
+      pipelineRef.current.bloomWeight = vibe.bloom.weight;
+    }
+    
+    // Fog
+    if (vibe.fog.enabled) {
+      scene.fogMode = Scene.FOGMODE_EXP2;
+      scene.fogDensity = vibe.fog.density;
+      scene.fogColor = new Color3(0.02, 0.02, 0.02);
+    } else {
+      scene.fogMode = Scene.FOGMODE_NONE;
+    }
+    
+    // Key light
+    if (lightsRef.current.keySpot) {
+      const k = lightsRef.current.keySpot;
+      k.intensity = vibe.key.intensity;
+      k.angle = Tools.ToRadians(vibe.key.angle);
+      k.diffuse = kelvinToRGB(vibe.key.kelvin);
+    }
+    
+    // Rim light
+    if (lightsRef.current.rimSpot) {
+      const r = lightsRef.current.rimSpot;
+      r.intensity = vibe.rim.intensity;
+      r.angle = Tools.ToRadians(vibe.rim.angle);
+      r.diffuse = kelvinToRGB(vibe.rim.kelvin);
+    }
+    
+    // Emissive normalization
+    normalizeEmissives(scene, vibe.emissiveIntensity);
+    
+    // Console verification logging
+    console.log('✅ Vibe applied successfully - Final values:');
+    console.log(`   Env intensity: ${scene.environmentIntensity.toFixed(2)}`);
+    console.log(`   Exposure: ${scene.imageProcessingConfiguration.exposure.toFixed(2)}`);
+    console.log(`   Key light: ${lightsRef.current.keySpot?.intensity.toFixed(0) || 'N/A'}`);
+    console.log(`   Rim light: ${lightsRef.current.rimSpot?.intensity.toFixed(0) || 'N/A'}`);
+    console.log(`   Bloom: ${vibe.bloom.enabled ? 'ON' : 'OFF'} (threshold: ${vibe.bloom.threshold.toFixed(2)}, weight: ${vibe.bloom.weight.toFixed(2)})`);
+    console.log(`   Fog: ${vibe.fog.enabled ? 'ON' : 'OFF'} (density: ${vibe.fog.density.toFixed(4)})`);
+    console.log(`   Emissive intensity: ${vibe.emissiveIntensity.toFixed(1)}`);
+  };
 
   useEffect(() => {
     if (!canvasRef.current) {
-      console.error('❌ Canvas ref is null');
-      return;
+      console.error('❌ Canvas ref is null - retrying...');
+      // Retry after a short delay
+      const timeout = setTimeout(() => {
+        if (canvasRef.current) {
+          console.log('✅ Canvas ref available on retry');
+        } else {
+          console.error('❌ Canvas ref still null after retry');
+        }
+      }, 100);
+      return () => clearTimeout(timeout);
     }
 
     console.log('🎮 Starting Babylon.js initialization...');
@@ -23,7 +187,16 @@ export default function BabylonSceneContent() {
     let camera: FreeCamera | ArcRotateCamera | null = null;
     const keys: { [key: string]: boolean } = {};
 
+    // Expose keys object globally for debugging
+    (window as any).__babylonKeys = keys;
+
+    (async () => {
     try {
+        if (!canvasRef.current) {
+          console.error('❌ Canvas ref is null');
+          return;
+        }
+        
       // Get canvas dimensions
       const rect = canvasRef.current.getBoundingClientRect();
       const width = rect.width || window.innerWidth;
@@ -31,44 +204,134 @@ export default function BabylonSceneContent() {
       
       console.log(`📐 Canvas size: ${width}x${height}`);
 
-      // Initialize engine with shader support
-      engine = new Engine(canvasRef.current, true, {
+      // Initialize engine with WebGPU support (aggressive GPU acceleration)
+      const createEngine = async (canvas: HTMLCanvasElement, preferWgpu: boolean): Promise<Engine> => {
+        // Always try WebGPU first if enabled (best performance)
+        if (preferWgpu) {
+          try {
+            console.log('🔍 Checking WebGPU support...');
+            const isSupported = await WebGPUEngine.IsSupportedAsync;
+            if (isSupported) {
+              console.log('✅ WebGPU supported! Using GPU-accelerated WebGPU engine');
+              const e = new WebGPUEngine(canvas, {
+                powerPreference: "high-performance", // Prefer dedicated GPU
+                deviceDescriptor: {
+                  requiredFeatures: [
+                    "texture-compression-bc",
+                    "texture-compression-etc2",
+                    "texture-compression-astc",
+                  ],
+                },
+              });
+              await e.initAsync();
+              console.log('🚀 WebGPU engine initialized with GPU acceleration');
+              return e;
+            } else {
+              console.log('⚠️ WebGPU not supported, falling back to WebGL2');
+            }
+          } catch (e) {
+            console.log('⚠️ WebGPU initialization failed, falling back to WebGL2:', e);
+          }
+        }
+        
+        // WebGL2 with maximum GPU acceleration
+        console.log('✅ Using WebGL2 engine with GPU acceleration');
+        return new Engine(canvas, true, {
         preserveDrawingBuffer: true,
         stencil: true,
-        antialias: true,
+          antialias: true, // GPU-accelerated anti-aliasing
         alpha: true,
         premultipliedAlpha: false,
-        powerPreference: "high-performance",
-        doNotHandleContextLost: false
-      });
-      console.log('✅ Engine created with shader support');
+          powerPreference: "high-performance", // Force dedicated GPU
+          doNotHandleContextLost: false,
+          // GPU acceleration hints
+          adaptToDeviceRatio: true, // Optimize for device pixel ratio
+          xrCompatible: false, // Disable XR for better performance
+        });
+      };
 
-      // Create scene
+      if (!canvasRef.current) {
+        console.error('❌ Canvas ref is null');
+        return;
+      }
+
+      engine = await createEngine(canvasRef.current, useWebGPU);
+      
+      // Log GPU information for debugging
+      if (engine instanceof WebGPUEngine) {
+        console.log('🚀 WebGPU Engine Active - Using dedicated GPU');
+        console.log(`   GPU Adapter: ${(engine as any).adapter?.info?.description || 'Unknown'}`);
+      } else {
+        console.log('⚡ WebGL2 Engine Active - GPU acceleration enabled');
+        const gl = (engine as any).gl;
+        if (gl) {
+          const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+          if (debugInfo) {
+            const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+            console.log(`   GPU: ${renderer || 'Unknown'}`);
+          }
+        }
+      }
+
+      // Create scene with GPU acceleration optimizations
       const scene = new Scene(engine);
+      sceneRef.current = scene;
+      
+      // GPU acceleration settings
+      scene.useRightHandedSystem = false; // Standard left-handed (better GPU compatibility)
+      
       // Start with black background - will use GLB's background if available
       scene.clearColor = new Color4(0, 0, 0, 1); // Black background
       
-      // Enable shadows and shader features
+      // Enable GPU-accelerated shadows and shader features
       scene.shadowsEnabled = true;
+      
+      // GPU-accelerated image processing
       scene.imageProcessingConfiguration.toneMappingEnabled = true;
       scene.imageProcessingConfiguration.exposure = 1.0;
-      console.log('✅ Scene created with shader features enabled');
+      scene.imageProcessingConfiguration.contrast = 1.0;
+      
+      // GPU-accelerated rendering hints
+      scene.autoClear = true; // Let GPU handle clearing
+      scene.autoClearDepthAndStencil = true;
+      
+      console.log('✅ Scene created with GPU acceleration enabled');
+      
+      // Disable Babylon.js default loading screen
+      engine.loadingScreen.displayLoadingUI = () => {};
+      engine.loadingScreen.hideLoadingUI = () => {};
+      console.log('✅ Babylon loading screen disabled');
 
+      // ===== SPAWN POINT - T-Rex Cinematic View =====
+      // Position: In front of cave, elevated, looking down (like the T-Rex looking at prey)
+      const CAVE_CENTER = new Vector3(0, 1.5, 0);    // Center of cave, slightly elevated
+      
       // Start with ArcRotateCamera for better initial view
       camera = new ArcRotateCamera(
         'camera',
-        -Math.PI / 2,
-        Math.PI / 3,
-        15,
-        Vector3.Zero(),
+        Tools.ToRadians(0),    // Alpha: 0° = frontal view (looking straight at cave)
+        Tools.ToRadians(55),   // Beta: 55° = elevated angle (looking down from above)
+        14,                    // Radius: 14 units back (frontal + slightly elevated)
+        CAVE_CENTER,           // Target: look at cave center
         scene
       );
+      
+      console.log('📍 Spawn point set: T-Rex Cinematic View');
+      console.log(`  Camera target: (${CAVE_CENTER.x}, ${CAVE_CENTER.y}, ${CAVE_CENTER.z})`);
+      console.log(`  Camera alpha: 0° (frontal) | beta: 55° (elevated) | radius: 14 units`);
+      console.log(`  View: In front of cave, slightly above, looking down`);
       
       // Configure camera controls with proper touch gesture support
       camera.attachControl(canvasRef.current, true);
       camera.lowerRadiusLimit = 2;
       camera.upperRadiusLimit = 100; // Much further zoom out
       camera.wheelDeltaPercentage = 0.01; // Faster zoom
+      
+      // Enhanced mouse sensitivity for better camera control
+      camera.angularSensibilityX = 500; // Horizontal rotation sensitivity (lower = more sensitive)
+      camera.angularSensibilityY = 500; // Vertical rotation sensitivity
+      camera.panningSensibility = 50; // Panning sensitivity
+      camera.inertia = 0.9; // Smooth camera movement (0 = no inertia, 1 = max inertia)
       
       // Enable pinch-to-zoom for touch devices
       camera.pinchToPanMaxDistance = 100;
@@ -82,43 +345,749 @@ export default function BabylonSceneContent() {
         (pointerInputs as any).useNaturalPinchZoom = true; // Use natural pinch zoom
       }
       
+      console.log('✅ Camera controls linked to mouse/cursor');
+      
       scene.activeCamera = camera;
       console.log('✅ Camera created');
 
-      // Enhanced lighting setup - increased intensities for brighter scene
-      // Main ambient light
-      const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), scene);
-      ambientLight.intensity = 1.5; // Increased from 0.8
+      // Create GPU-accelerated post-processing pipeline
+      const pipeline = new DefaultRenderingPipeline('drp', true, scene, [camera]);
+      pipelineRef.current = pipeline;
+      
+      // GPU-accelerated bloom settings
+      pipeline.bloomEnabled = true;
+      pipeline.bloomThreshold = 1.1;
+      pipeline.bloomWeight = 0.12;
+      pipeline.bloomKernel = 64; // GPU-optimized kernel size
+      pipeline.bloomScale = 0.5; // Half resolution for better GPU performance
+      
+      // GPU-accelerated vignette
+      scene.imageProcessingConfiguration.vignetteEnabled = true;
+      scene.imageProcessingConfiguration.vignetteWeight = 0.2;
+      
+      // GPU performance optimizations
+      pipeline.samples = 1; // Disable MSAA for better GPU performance (post-processing handles smoothing)
+      
+      console.log('✅ GPU-accelerated post-processing pipeline created');
+
+      // Create gizmo manager for light manipulation
+      const gizmos = new GizmoManager(scene);
+      gizmoManagerRef.current = gizmos;
+      gizmos.positionGizmoEnabled = false;
+      gizmos.rotationGizmoEnabled = false;
+      gizmos.scaleGizmoEnabled = false;
+      gizmos.usePointerToAttachGizmos = false;
+      if (gizmos.gizmos.positionGizmo) {
+        gizmos.gizmos.positionGizmo.updateGizmoRotationToMatchAttachedMesh = false;
+      }
+      
+      // Hotkeys for gizmo modes (W/E/R)
+      scene.onKeyboardObservable.add((kb) => {
+        if (kb.type !== KeyboardEventTypes.KEYDOWN) return;
+        const key = kb.event.key.toLowerCase();
+        if (key === 'w') {
+          gizmos.positionGizmoEnabled = true;
+          gizmos.rotationGizmoEnabled = false;
+          gizmos.scaleGizmoEnabled = false;
+        } else if (key === 'e') {
+          gizmos.positionGizmoEnabled = false;
+          gizmos.rotationGizmoEnabled = true;
+          gizmos.scaleGizmoEnabled = false;
+        } else if (key === 'r') {
+          gizmos.positionGizmoEnabled = false;
+          gizmos.rotationGizmoEnabled = false;
+          gizmos.scaleGizmoEnabled = true;
+        }
+      });
+      
+      // Expose gizmo manager globally
+      (window as any).__babylonGizmoManager = gizmos;
+      (window as any).__babylonScene = scene;
+      
+      // Gizmo API functions with enhanced logging
+      (window as any).__babylonListLights = () => {
+        console.log('📋 Listing lights:', scene.lights.length);
+        scene.lights.forEach((l, i) => console.log(`  [${i}] ${l.name}`));
+        return scene.lights as Light[];
+      };
+      
+      (window as any).__babylonSelectLight = (name: string) => {
+        console.log(`🎯 Selecting light: ${name}`);
+        const l = scene.getLightByName(name);
+        if (l) {
+          gizmos.attachToNode(l);
+          console.log(`✅ Gizmo attached to ${name}`);
+        } else {
+          console.warn(`⚠️ Light not found: ${name}`);
+        }
+      };
+      
+      (window as any).__babylonSetGizmosEnabled = (on: boolean) => {
+        console.log(`🔧 Setting gizmos enabled: ${on}`);
+        gizmos.positionGizmoEnabled = on;
+        gizmos.rotationGizmoEnabled = on;
+        gizmos.scaleGizmoEnabled = false;
+        console.log(`✅ Gizmos ${on ? 'enabled' : 'disabled'}`);
+      };
+      
+      (window as any).__babylonSetGizmoMode = (mode: 'translate' | 'rotate' | 'scale') => {
+        console.log(`🔧 Setting gizmo mode: ${mode}`);
+        gizmos.positionGizmoEnabled = (mode === 'translate');
+        gizmos.rotationGizmoEnabled = (mode === 'rotate');
+        gizmos.scaleGizmoEnabled = (mode === 'scale');
+        console.log(`✅ Gizmo mode set to ${mode}`);
+      };
+      
+      console.log('✅ Gizmo manager created and API exposed globally');
+      console.log('   Test gizmos: window.__babylonListLights()');
+      console.log('   Scene available: window.__babylonScene');
+
+      // Apply scene lighting multiplier to all lights
+      const applySceneLighting = (multiplier: number) => {
+        console.log(`🔧 applySceneLighting called with multiplier: ${multiplier.toFixed(2)}`);
+        let updatedCount = 0;
+        
+        if (lightsRef.current.ambient && baseIntensitiesRef.current.ambient !== undefined) {
+          const newIntensity = baseIntensitiesRef.current.ambient * multiplier;
+          lightsRef.current.ambient.intensity = newIntensity;
+          console.log(`  ✅ Ambient: ${baseIntensitiesRef.current.ambient.toFixed(3)} × ${multiplier.toFixed(2)} = ${newIntensity.toFixed(3)}`);
+          updatedCount++;
+        }
+        if (lightsRef.current.fill && baseIntensitiesRef.current.fill !== undefined) {
+          const newIntensity = baseIntensitiesRef.current.fill * multiplier;
+          lightsRef.current.fill.intensity = newIntensity;
+          console.log(`  ✅ Fill: ${baseIntensitiesRef.current.fill.toFixed(3)} × ${multiplier.toFixed(2)} = ${newIntensity.toFixed(3)}`);
+          updatedCount++;
+        }
+        if (lightsRef.current.keySpot && baseIntensitiesRef.current.keySpot !== undefined) {
+          const newIntensity = baseIntensitiesRef.current.keySpot * multiplier;
+          lightsRef.current.keySpot.intensity = newIntensity;
+          console.log(`  ✅ KeySpot: ${baseIntensitiesRef.current.keySpot.toFixed(1)} × ${multiplier.toFixed(2)} = ${newIntensity.toFixed(1)}`);
+          updatedCount++;
+        }
+        if (lightsRef.current.rimSpot && baseIntensitiesRef.current.rimSpot !== undefined) {
+          const newIntensity = baseIntensitiesRef.current.rimSpot * multiplier;
+          lightsRef.current.rimSpot.intensity = newIntensity;
+          console.log(`  ✅ RimSpot: ${baseIntensitiesRef.current.rimSpot.toFixed(1)} × ${multiplier.toFixed(2)} = ${newIntensity.toFixed(1)}`);
+          updatedCount++;
+        }
+        if (lightsRef.current.mainDir && baseIntensitiesRef.current.mainDir !== undefined) {
+          const newIntensity = baseIntensitiesRef.current.mainDir * multiplier;
+          lightsRef.current.mainDir.intensity = newIntensity;
+          console.log(`  ✅ MainDir: ${baseIntensitiesRef.current.mainDir.toFixed(2)} × ${multiplier.toFixed(2)} = ${newIntensity.toFixed(2)}`);
+          updatedCount++;
+        }
+        if (lightsRef.current.point1 && baseIntensitiesRef.current.point1 !== undefined) {
+          const newIntensity = baseIntensitiesRef.current.point1 * multiplier;
+          lightsRef.current.point1.intensity = newIntensity;
+          console.log(`  ✅ Point1: ${baseIntensitiesRef.current.point1.toFixed(2)} × ${multiplier.toFixed(2)} = ${newIntensity.toFixed(2)}`);
+          updatedCount++;
+        }
+        if (lightsRef.current.point2 && baseIntensitiesRef.current.point2 !== undefined) {
+          const newIntensity = baseIntensitiesRef.current.point2 * multiplier;
+          lightsRef.current.point2.intensity = newIntensity;
+          console.log(`  ✅ Point2: ${baseIntensitiesRef.current.point2.toFixed(2)} × ${multiplier.toFixed(2)} = ${newIntensity.toFixed(2)}`);
+          updatedCount++;
+        }
+        
+        console.log(`✅ Updated ${updatedCount} lights with scene lighting multiplier`);
+        
+        if (updatedCount === 0) {
+          console.warn('⚠️ No lights found to update! Lights may not be initialized yet.');
+        }
+      };
+      
+      // Setup lighting based on preset
+      const setupLighting = (preset: string, enabled: boolean, ambientValue?: number) => {
+        console.log(`🎬 setupLighting called:`, { preset, enabled, ambientValue });
+        console.log(`   Scene ref exists: ${!!sceneRef.current}`);
+        console.log(`   Scene lights count: ${sceneRef.current?.lights.length || 0}`);
+        console.log(`   LightsRef keys: ${Object.keys(lightsRef.current).join(', ') || 'none'}`);
+        
+        // Get current values from store if not provided
+        const currentAmbient = ambientValue !== undefined ? ambientValue : useLightingStore.getState().ambientIntensity;
+        const currentSceneLighting = useLightingStore.getState().sceneLightingIntensity;
+        
+        // Check if we're using GLB lights (they're already in the scene)
+        const glbLightsCount = scene.lights.length;
+        const usingGlbLights = glbLightsCount > 0 && Object.keys(lightsRef.current).length > 0;
+        
+        console.log(`   GLB lights check: ${glbLightsCount} lights in scene, ${Object.keys(lightsRef.current).length} in refs, usingGlbLights: ${usingGlbLights}`);
+        
+        if (usingGlbLights) {
+          console.log(`💡 Using ${glbLightsCount} GLB lights (enabled: ${enabled})`);
+          
+          if (!enabled) {
+            // Dark mode: disable all GLB lights
+            console.log('🌑 Dark mode: Disabling all GLB lights');
+            scene.lights.forEach((light: any) => {
+              light.setEnabled(false);
+              console.log(`  ❌ Disabled light: ${light.name || 'unnamed'}`);
+            });
+            scene.ambientColor = new Color3(0, 0, 0);
+            
+            // Disable ambient reflection on all materials
+            scene.meshes.forEach((mesh: any) => {
+              if (mesh.material) {
+                const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                materials.forEach((mat: any) => {
+                  const hasEmissive = mat.emissiveColor && 
+                    (mat.emissiveColor.r > 0.1 || mat.emissiveColor.g > 0.1 || mat.emissiveColor.b > 0.1);
+                  if (!hasEmissive) {
+                    if (mat.ambientColor) mat.ambientColor = new Color3(0, 0, 0);
+                    if (mat.ambientTexture) mat.ambientTexture = null;
+                    if (mat.disableLighting !== undefined) mat.disableLighting = true;
+                    mat.markAsDirty();
+                  }
+                });
+              }
+            });
+            
+            // Keep screens bright
+            screenMaterialsRef.current.forEach(({ material, baseEmissive }) => {
+              if (material && baseEmissive) {
+                material.emissiveColor = baseEmissive;
+                material.emissiveIntensity = 5.0;
+                if (material.disableLighting !== undefined) {
+                  material.disableLighting = true;
+                }
+                material.markAsDirty();
+              }
+            });
+            
+            console.log('🌑 Dark mode activated - all GLB lights off, pure black, screens stay bright');
+            return;
+          } else {
+            // Light mode: enable all GLB lights and apply scene lighting multiplier
+            console.log('💡 Light mode: Enabling all GLB lights');
+            scene.lights.forEach((light: any) => {
+              light.setEnabled(true);
+              if (light.intensity !== undefined) {
+                // Find base intensity from our refs
+                const lightKey = Object.keys(lightsRef.current).find(key => 
+                  lightsRef.current[key as keyof typeof lightsRef.current] === light
+                );
+                if (lightKey && baseIntensitiesRef.current[lightKey as keyof typeof baseIntensitiesRef.current] !== undefined) {
+                  const baseIntensity = baseIntensitiesRef.current[lightKey as keyof typeof baseIntensitiesRef.current] || light.intensity;
+                  light.intensity = baseIntensity * currentSceneLighting;
+                } else {
+                  // Apply multiplier to existing intensity
+                  light.intensity = light.intensity * currentSceneLighting;
+                }
+              }
+            });
+            
+            // Restore materials
+            scene.meshes.forEach((mesh: any) => {
+              if (mesh.material) {
+                const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                materials.forEach((mat: any) => {
+                  if (mat.disableLighting !== undefined) mat.disableLighting = false;
+                  mat.markAsDirty();
+                });
+              }
+            });
+            
+            console.log(`✅ GLB lights enabled with scene lighting multiplier: ${currentSceneLighting.toFixed(2)}`);
+            return;
+          }
+        }
+        
+        // Fallback to custom lighting if GLB has no lights
+        console.log('⚠️ No GLB lights found, using cinematic lighting setup');
+        
+        // Clear existing lights (but don't dispose GLB lights if they exist)
+        Object.values(lightsRef.current).forEach(light => {
+          // Only dispose lights we created, not GLB lights
+          if (light && light.name && !light.name.startsWith('glb')) {
+            light.dispose();
+          }
+        });
+        lightsRef.current = {};
+        baseIntensitiesRef.current = {};
+        
+        if (!enabled) {
+          // Dark mode: All lights off - pure black ambient, only emissive screens visible
+          scene.ambientColor = new Color3(0, 0, 0); // Pure black
+          
+          // Disable all scene lights
+          scene.lights.forEach((light: any) => {
+            if (light.name && !light.name.startsWith('glb')) {
+              light.setEnabled(false);
+            }
+          });
+          
+          // Disable ambient reflection on all materials
+          scene.meshes.forEach((mesh: any) => {
+            if (mesh.material) {
+              const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+              materials.forEach((mat: any) => {
+                const hasEmissive = mat.emissiveColor && 
+                  (mat.emissiveColor.r > 0.1 || mat.emissiveColor.g > 0.1 || mat.emissiveColor.b > 0.1);
+                if (!hasEmissive) {
+                  if (mat.ambientColor) mat.ambientColor = new Color3(0, 0, 0);
+                  if (mat.ambientTexture) mat.ambientTexture = null;
+                  if (mat.disableLighting !== undefined) mat.disableLighting = true;
+                  mat.markAsDirty();
+                }
+              });
+            }
+          });
+          
+          // Ensure screens stay bright with high emissive intensity
+          screenMaterialsRef.current.forEach(({ material, baseEmissive }) => {
+            if (material && baseEmissive) {
+              material.emissiveColor = baseEmissive;
+              material.emissiveIntensity = 5.0; // High intensity for dark mode
+              if (material.disableLighting !== undefined) {
+                material.disableLighting = true; // Screens emit their own light
+              }
+              material.markAsDirty();
+            }
+          });
+          
+          console.log('🌑 Dark mode activated - all lights off, pure black, screens stay bright');
+          return;
+        }
+        
+        // ===== CINEMATIC LIGHTING SETUP =====
+        // Based on professional 3-point lighting + environment
+        scene.ambientColor = new Color3(0, 0, 0); // Pure black base for contrast
+        
+        if (preset === 'default' || preset === 'dramatic') {
+          // Professional cinematic setup: Key + Rim + Fill
+          // Key Light (Main illumination - warm golden)
+          const baseKeySpot = preset === 'dramatic' ? 700 : 400;
+          const keyLight = new SpotLight('keyLight',
+            new Vector3(0, 5, -3), // Position
+            new Vector3(0, -1.2, 0), // Direction (down and forward)
+            Tools.ToRadians(32), // Angle
+            0.25, // Exponent
+            scene);
+          keyLight.diffuse = new Color3(1.0, 0.88, 0.55); // Warm golden
+          keyLight.intensity = baseKeySpot * currentSceneLighting;
+          keyLight.shadowEnabled = true;
+          lightsRef.current.keySpot = keyLight;
+          baseIntensitiesRef.current.keySpot = baseKeySpot;
+          
+          // Rim Light (Edge highlights - cool blue)
+          const baseRimSpot = preset === 'dramatic' ? 500 : 300;
+          const rimLight = new SpotLight('rimLight',
+            new Vector3(4.0, 2.2, 2.2), // Position
+            new Vector3(-1, -0.3, -0.6), // Direction
+            Tools.ToRadians(25), // Angle
+            0.3, // Exponent
+            scene);
+          rimLight.diffuse = new Color3(0.75, 0.85, 1.0); // Cool blue
+          rimLight.intensity = baseRimSpot * currentSceneLighting;
+          rimLight.shadowEnabled = true;
+          lightsRef.current.rimSpot = rimLight;
+          baseIntensitiesRef.current.rimSpot = baseRimSpot;
+          
+          // Fill Light (Soft ambient - minimal)
+          const baseAmbient = preset === 'dramatic' ? currentAmbient * 0.5 : currentAmbient;
+          const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 100, 0), scene);
+          ambientLight.intensity = baseAmbient * currentSceneLighting;
       ambientLight.diffuse = new Color3(1, 1, 1);
-      
-      // Bottom fill light
-      const fillLight = new HemisphericLight('fillLight', new Vector3(0, -1, 0), scene);
-      fillLight.intensity = 0.8; // Increased from 0.4
-      fillLight.diffuse = new Color3(0.8, 0.8, 0.9);
-      
-      // Main directional light (simulating overhead/cave entrance)
+          lightsRef.current.ambient = ambientLight;
+          baseIntensitiesRef.current.ambient = baseAmbient;
+          
+        } else if (preset === 'bright') {
+          // Bright, even lighting
+          const baseAmbient = currentAmbient * 2;
+          const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 100, 0), scene);
+          ambientLight.intensity = baseAmbient * currentSceneLighting;
+          ambientLight.diffuse = new Color3(1, 1, 1);
+          lightsRef.current.ambient = ambientLight;
+          baseIntensitiesRef.current.ambient = baseAmbient;
+          
+          const baseMainDir = 3.0;
       const mainLight = new DirectionalLight('mainLight', new Vector3(0, -1, -0.5), scene);
       mainLight.position = new Vector3(0, 10, 0);
-      mainLight.intensity = 2.0; // Increased from 1.2
+          mainLight.intensity = baseMainDir * currentSceneLighting;
       mainLight.diffuse = new Color3(1, 0.95, 0.9);
-      mainLight.shadowEnabled = true;
+          lightsRef.current.mainDir = mainLight;
+          baseIntensitiesRef.current.mainDir = baseMainDir;
+          
+        } else if (preset === 'moody') {
+          // Very dark, minimal lighting
+          const baseAmbient = currentAmbient * 0.3;
+          const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 100, 0), scene);
+          ambientLight.intensity = baseAmbient * currentSceneLighting;
+          ambientLight.diffuse = new Color3(0.5, 0.5, 0.6);
+          lightsRef.current.ambient = ambientLight;
+          baseIntensitiesRef.current.ambient = baseAmbient;
+          
+          const baseKeySpot = 300;
+          const keyLight = new SpotLight('keyLight',
+            new Vector3(0, 5, -3),
+            new Vector3(0, -1.2, 0),
+            Tools.ToRadians(20),
+            0.2,
+            scene);
+          keyLight.diffuse = new Color3(1.0, 0.9, 0.7);
+          keyLight.intensity = baseKeySpot * currentSceneLighting;
+          lightsRef.current.keySpot = keyLight;
+          baseIntensitiesRef.current.keySpot = baseKeySpot;
+        }
+        
+        // Re-expose refs after creating lights
+        (window as any).__babylonLightsRef = lightsRef;
+        (window as any).__babylonBaseIntensitiesRef = baseIntensitiesRef;
+        
+        console.log(`✅ Cinematic lighting preset "${preset}" applied (enabled: ${enabled}, ambient: ${currentAmbient.toFixed(3)}, scene lighting: ${currentSceneLighting.toFixed(2)})`);
+        console.log(`   Lights created: ${Object.keys(lightsRef.current).length}`);
+      };
       
-      // Additional point lights for better illumination
-      const pointLight1 = new PointLight('pointLight1', new Vector3(5, 5, 5), scene);
-      pointLight1.intensity = 1.2; // Increased from 0.6
-      pointLight1.range = 20;
+      // Expose lights refs globally so LightsPanel can access them (do this early)
+      (window as any).__babylonLightsRef = lightsRef;
+      (window as any).__babylonBaseIntensitiesRef = baseIntensitiesRef;
+      (window as any).__babylonSceneRef = sceneRef;
+      console.log('✅ Lights refs exposed to window (initial)');
       
-      const pointLight2 = new PointLight('pointLight2', new Vector3(-5, 5, -5), scene);
-      pointLight2.intensity = 1.2; // Increased from 0.6
-      pointLight2.range = 20;
+      // Initial lighting setup
+      setupLighting(currentPreset, lightsEnabled);
       
-      console.log('✅ Enhanced lights created');
+      // Re-expose refs after initial lighting setup to ensure they're populated
+      (window as any).__babylonLightsRef = lightsRef;
+      (window as any).__babylonBaseIntensitiesRef = baseIntensitiesRef;
+      console.log('✅ Lights refs re-exposed after initial setup:', {
+        lightsCount: Object.keys(lightsRef.current).length,
+        baseIntensitiesCount: Object.keys(baseIntensitiesRef.current).length
+      });
+      
+      // Subscribe to lighting changes - use direct subscription without selector
+      let previousState = { 
+        preset: currentPreset, 
+        enabled: lightsEnabled, 
+        ambient: ambientIntensity,
+        sceneLighting: sceneLightingIntensity 
+      };
+      
+      console.log('📡 Setting up lighting store subscription...');
+      console.log('  Initial state:', previousState);
+      
+      const unsubscribe = useLightingStore.subscribe((state) => {
+        const newState = {
+          preset: state.currentPreset,
+          enabled: state.lightsEnabled,
+          ambient: state.ambientIntensity,
+          sceneLighting: state.sceneLightingIntensity
+        };
+        
+        console.log('📨 Subscription callback fired');
+        console.log('  Previous:', previousState);
+        console.log('  New:', newState);
+        
+        // Check if anything actually changed
+        if (newState.preset === previousState.preset &&
+            newState.enabled === previousState.enabled &&
+            newState.ambient === previousState.ambient &&
+            newState.sceneLighting === previousState.sceneLighting) {
+          console.log('⏭️ No actual changes detected, skipping update');
+          return; // No changes, skip
+        }
+        
+        console.log('🔔 Lighting store subscription triggered:', {
+          enabled: `${previousState.enabled} → ${newState.enabled}`,
+          preset: `${previousState.preset} → ${newState.preset}`,
+          ambient: `${previousState.ambient.toFixed(3)} → ${newState.ambient.toFixed(3)}`,
+          sceneLighting: `${previousState.sceneLighting.toFixed(2)} → ${newState.sceneLighting.toFixed(2)}`,
+          sceneRefExists: !!sceneRef.current,
+          lightsRefCount: Object.keys(lightsRef.current).length
+        });
+        
+        if (!sceneRef.current) {
+          console.error('❌ Scene ref is null! Cannot update lighting.');
+          return;
+        }
+        
+        // If only enabled state changed, just toggle lights
+        if (newState.preset === previousState.preset && 
+            newState.enabled !== previousState.enabled &&
+            newState.ambient === previousState.ambient &&
+            newState.sceneLighting === previousState.sceneLighting) {
+          console.log(`🔌 Toggling lights: ${previousState.enabled ? 'ON' : 'OFF'} → ${newState.enabled ? 'ON' : 'OFF'}`);
+          console.log('  Calling setupLighting with:', { preset: newState.preset, enabled: newState.enabled, ambient: newState.ambient });
+          setupLighting(newState.preset, newState.enabled, newState.ambient);
+          previousState = newState;
+          console.log('✅ Toggle complete, previousState updated');
+          return;
+        }
+        
+        console.log(`🔔 Lighting state changed:`, {
+          preset: `${previousState.preset} → ${newState.preset}`,
+          enabled: `${previousState.enabled} → ${newState.enabled}`,
+          ambient: `${previousState.ambient.toFixed(3)} → ${newState.ambient.toFixed(3)}`,
+          sceneLighting: `${previousState.sceneLighting.toFixed(2)} → ${newState.sceneLighting.toFixed(2)}`
+        });
+        
+        // If only scene lighting changed, apply multiplier to all existing lights
+        if (newState.preset === previousState.preset && 
+            newState.enabled === previousState.enabled && 
+            newState.ambient === previousState.ambient &&
+            newState.sceneLighting !== previousState.sceneLighting) {
+          console.log(`💡 Applying scene lighting multiplier: ${newState.sceneLighting.toFixed(2)}`);
+          applySceneLighting(newState.sceneLighting);
+          
+          // Ensure screens stay bright - restore their base emissive values
+          screenMaterialsRef.current.forEach(({ material, baseEmissive }) => {
+            if (material && baseEmissive) {
+              material.emissiveColor = baseEmissive;
+              material.emissiveIntensity = material.emissiveIntensity || 5.0;
+              material.markAsDirty();
+            }
+          });
+          
+          console.log(`✅ Scene lighting intensity updated to ${newState.sceneLighting.toFixed(2)} (${(newState.sceneLighting * 100).toFixed(0)}%)`);
+          previousState = newState;
+          return;
+        }
+        
+        // If only ambient intensity changed, update it directly without recreating all lights
+        if (newState.preset === previousState.preset && 
+            newState.enabled === previousState.enabled && 
+            newState.ambient !== previousState.ambient &&
+            newState.sceneLighting === previousState.sceneLighting) {
+          // Update ambient light intensity directly
+          if (lightsRef.current.ambient && baseIntensitiesRef.current.ambient !== undefined) {
+            // Apply preset-specific multiplier and scene lighting
+            let baseIntensity = newState.ambient;
+            if (newState.preset === 'dramatic') {
+              baseIntensity = newState.ambient * 0.5;
+            } else if (newState.preset === 'bright') {
+              baseIntensity = newState.ambient * 2;
+            } else if (newState.preset === 'moody') {
+              baseIntensity = newState.ambient * 0.3;
+            }
+            baseIntensitiesRef.current.ambient = baseIntensity;
+            lightsRef.current.ambient.intensity = baseIntensity * newState.sceneLighting;
+            console.log(`✅ Ambient light intensity updated to ${(baseIntensity * newState.sceneLighting).toFixed(3)} (base: ${baseIntensity.toFixed(3)}, scene: ${newState.sceneLighting.toFixed(2)}, preset: ${newState.preset})`);
+          }
+          previousState = newState;
+          return;
+        }
+        
+        // Preset or enabled state changed, recreate all lights with current values
+        console.log(`🔄 Recreating lights due to preset/enabled change`);
+        setupLighting(newState.preset, newState.enabled, newState.ambient);
+        
+        // Re-expose refs after lighting change
+        (window as any).__babylonLightsRef = lightsRef;
+        (window as any).__babylonBaseIntensitiesRef = baseIntensitiesRef;
+        console.log('✅ Lights refs re-exposed after preset change:', {
+          lightsCount: Object.keys(lightsRef.current).length,
+          baseIntensitiesCount: Object.keys(baseIntensitiesRef.current).length
+        });
+        
+        // If dark mode, ensure all materials are pure black except screens
+        if (!newState.enabled && sceneRef.current) {
+          sceneRef.current.meshes.forEach((mesh: any) => {
+            if (mesh.material) {
+              const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+              materials.forEach((mat: any) => {
+                const hasEmissive = mat.emissiveColor && 
+                  (mat.emissiveColor.r > 0.1 || mat.emissiveColor.g > 0.1 || mat.emissiveColor.b > 0.1);
+                if (!hasEmissive) {
+                  if (mat.ambientColor) mat.ambientColor = new Color3(0, 0, 0);
+                  if (mat.ambientTexture) mat.ambientTexture = null;
+                  if (mat.disableLighting !== undefined) mat.disableLighting = true;
+                  mat.markAsDirty();
+                }
+              });
+            }
+          });
+        }
+        
+        // Ensure screens stay bright after lighting recreation
+        // Especially important for dark mode (lightsEnabled = false)
+        screenMaterialsRef.current.forEach(({ material, baseEmissive }) => {
+          if (material && baseEmissive) {
+            material.emissiveColor = baseEmissive;
+            // Higher intensity for dark mode
+            material.emissiveIntensity = newState.enabled ? (material.emissiveIntensity || 5.0) : 5.0;
+            if (material.disableLighting !== undefined) {
+              material.disableLighting = true;
+            }
+            material.markAsDirty();
+          }
+        });
+        
+        previousState = newState;
+      });
+      
+      console.log('✅ Lighting system initialized');
+      
+      // Subscribe to vibes store changes - will apply when scene loads
+      // Use a flag to prevent multiple rapid applications
+      let isApplyingVibe = false;
+      
+      const unsubscribeVibes = useVibesStore.subscribe((state) => {
+        // Skip if already applying
+        if (isApplyingVibe) {
+          console.log('⏩ Skipping vibe application (already in progress)');
+          return;
+        }
+        
+        console.log('🎨 Vibe store changed, checking if ready to apply...');
+        console.log('  Scene ready:', !!sceneRef.current);
+        console.log('  Pipeline ready:', !!pipelineRef.current);
+        console.log('  Lights ready:', !!lightsRef.current.keySpot);
+        
+        if (sceneRef.current && pipelineRef.current && lightsRef.current.keySpot) {
+          console.log('✅ All systems ready, applying vibe...');
+          isApplyingVibe = true;
+          applyVibe(sceneRef.current, state.currentVibe);
+          // Reset flag after a short delay
+          setTimeout(() => { isApplyingVibe = false; }, 200);
+        } else {
+          console.warn('⚠️ Scene not ready yet, vibe will be applied after scene loads');
+        }
+      });
+      
+      console.log('✅ Vibes system subscription initialized');
       
       console.log('📦 Loading batcave model...');
       // Use AppendAsync to load FULL scene including environment textures and backgrounds
       SceneLoader.AppendAsync('/', 'the_batcave.glb', scene)
         .then(() => {
           console.log('✅ Batcave scene loaded!');
+          
+          // ===== INSPECT GLB DEFAULT CONTENT =====
+          console.log('📋 ===== GLB FILE CONTENTS =====');
+          console.log('🔦 Lights in GLB:', scene.lights.length);
+          scene.lights.forEach((light, idx) => {
+            console.log(`  [${idx}] ${light.name || 'Unnamed'} - Type: ${light.getClassName()}, Enabled: ${light.isEnabled()}, Intensity: ${(light as any).intensity || 'N/A'}`);
+          });
+          
+          console.log('📷 Cameras in GLB:', scene.cameras.length);
+          scene.cameras.forEach((cam, idx) => {
+            console.log(`  [${idx}] ${cam.name || 'Unnamed'} - Type: ${cam.getClassName()}, Position: (${cam.position.x.toFixed(2)}, ${cam.position.y.toFixed(2)}, ${cam.position.z.toFixed(2)})`);
+          });
+          
+          console.log('🌍 Environment:', {
+            environmentTexture: scene.environmentTexture ? 'Found' : 'None',
+            environmentIntensity: scene.environmentIntensity || 'N/A',
+            ambientColor: scene.ambientColor ? `(${scene.ambientColor.r.toFixed(3)}, ${scene.ambientColor.g.toFixed(3)}, ${scene.ambientColor.b.toFixed(3)})` : 'None'
+          });
+          
+          console.log('📦 Meshes:', scene.meshes.length);
+          console.log('🎨 Materials:', scene.materials.length);
+          
+          // ===== USE GLB's NATIVE LIGHTS AS DEFAULT =====
+          console.log('💡 Using GLB native lights as default preset...');
+          
+          // Find and store GLB lights by type
+          const glbLights = {
+            spotLights: scene.lights.filter(l => l instanceof SpotLight) as SpotLight[],
+            directionalLights: scene.lights.filter(l => l instanceof DirectionalLight) as DirectionalLight[],
+            pointLights: scene.lights.filter(l => l instanceof PointLight) as PointLight[],
+            hemisphericLights: scene.lights.filter(l => l instanceof HemisphericLight) as HemisphericLight[],
+          };
+          
+          console.log(`  Found: ${glbLights.spotLights.length} spots, ${glbLights.directionalLights.length} directional, ${glbLights.pointLights.length} points, ${glbLights.hemisphericLights.length} hemispheric`);
+          
+          // Store GLB lights in lightsRef for control
+          if (glbLights.spotLights.length > 0) {
+            lightsRef.current.keySpot = glbLights.spotLights[0];
+            baseIntensitiesRef.current.keySpot = glbLights.spotLights[0].intensity;
+            console.log(`  ✅ Key spotlight: ${glbLights.spotLights[0].name} (intensity: ${glbLights.spotLights[0].intensity})`);
+          }
+          
+          if (glbLights.spotLights.length > 1) {
+            lightsRef.current.rimSpot = glbLights.spotLights[1];
+            baseIntensitiesRef.current.rimSpot = glbLights.spotLights[1].intensity;
+            console.log(`  ✅ Rim spotlight: ${glbLights.spotLights[1].name} (intensity: ${glbLights.spotLights[1].intensity})`);
+          }
+          
+          if (glbLights.directionalLights.length > 0) {
+            lightsRef.current.mainDir = glbLights.directionalLights[0];
+            baseIntensitiesRef.current.mainDir = glbLights.directionalLights[0].intensity;
+            console.log(`  ✅ Directional light: ${glbLights.directionalLights[0].name} (intensity: ${glbLights.directionalLights[0].intensity})`);
+          }
+          
+          if (glbLights.hemisphericLights.length > 0) {
+            lightsRef.current.ambient = glbLights.hemisphericLights[0];
+            baseIntensitiesRef.current.ambient = glbLights.hemisphericLights[0].intensity;
+            console.log(`  ✅ Hemispheric light: ${glbLights.hemisphericLights[0].name} (intensity: ${glbLights.hemisphericLights[0].intensity})`);
+          }
+          
+          if (glbLights.pointLights.length > 0) {
+            lightsRef.current.point1 = glbLights.pointLights[0];
+            baseIntensitiesRef.current.point1 = glbLights.pointLights[0].intensity;
+            console.log(`  ✅ Point light 1: ${glbLights.pointLights[0].name} (intensity: ${glbLights.pointLights[0].intensity})`);
+          }
+          
+          if (glbLights.pointLights.length > 1) {
+            lightsRef.current.point2 = glbLights.pointLights[1];
+            baseIntensitiesRef.current.point2 = glbLights.pointLights[1].intensity;
+            console.log(`  ✅ Point light 2: ${glbLights.pointLights[1].name} (intensity: ${glbLights.pointLights[1].intensity})`);
+          }
+          
+          console.log('✅ GLB native lights loaded and stored as default preset');
+          console.log('🖼️ Textures:', scene.textures.length);
+          console.log('📋 ===== END GLB CONTENTS =====');
+          
+          // Check total GLB lights count
+          const totalGLBLights = glbLights.spotLights.length + glbLights.directionalLights.length + 
+                                 glbLights.pointLights.length + glbLights.hemisphericLights.length;
+          
+          // If GLB has lights, we've already mapped them above
+          if (totalGLBLights > 0) {
+            console.log(`✅ GLB contains ${totalGLBLights} lights - using native GLB lights`);
+          } else {
+            console.log('⚠️ GLB has no lights - creating custom lighting...');
+            
+            // Fallback: Create custom lights if GLB has none
+            scene.lights.forEach((light, idx) => {
+              const lightName = light.name || `glbLight${idx}`;
+              console.log(`  Mapping GLB light: ${lightName} (${light.getClassName()})`);
+              
+              // Try to identify light types and map them
+              if (light instanceof HemisphericLight) {
+                if (!lightsRef.current.ambient) {
+                  lightsRef.current.ambient = light;
+                  baseIntensitiesRef.current.ambient = (light as any).intensity || 1.0;
+                  console.log(`    → Mapped to 'ambient'`);
+                } else if (!lightsRef.current.fill) {
+                  lightsRef.current.fill = light;
+                  baseIntensitiesRef.current.fill = (light as any).intensity || 1.0;
+                  console.log(`    → Mapped to 'fill'`);
+                }
+              } else if (light instanceof SpotLight) {
+                if (!lightsRef.current.keySpot) {
+                  lightsRef.current.keySpot = light;
+                  baseIntensitiesRef.current.keySpot = (light as any).intensity || 1.0;
+                  console.log(`    → Mapped to 'keySpot'`);
+                } else if (!lightsRef.current.rimSpot) {
+                  lightsRef.current.rimSpot = light;
+                  baseIntensitiesRef.current.rimSpot = (light as any).intensity || 1.0;
+                  console.log(`    → Mapped to 'rimSpot'`);
+                }
+              } else if (light instanceof DirectionalLight) {
+                if (!lightsRef.current.mainDir) {
+                  lightsRef.current.mainDir = light;
+                  baseIntensitiesRef.current.mainDir = (light as any).intensity || 1.0;
+                  console.log(`    → Mapped to 'mainDir'`);
+                }
+              } else if (light instanceof PointLight) {
+                if (!lightsRef.current.point1) {
+                  lightsRef.current.point1 = light;
+                  baseIntensitiesRef.current.point1 = (light as any).intensity || 1.0;
+                  console.log(`    → Mapped to 'point1'`);
+                } else if (!lightsRef.current.point2) {
+                  lightsRef.current.point2 = light;
+                  baseIntensitiesRef.current.point2 = (light as any).intensity || 1.0;
+                  console.log(`    → Mapped to 'point2'`);
+                }
+              }
+            });
+            
+            // Re-expose refs after mapping GLB lights
+            (window as any).__babylonLightsRef = lightsRef;
+            (window as any).__babylonBaseIntensitiesRef = baseIntensitiesRef;
+            console.log('✅ GLB lights mapped and refs exposed');
+          }
           
           // Get all meshes from scene (AppendAsync adds to scene.meshes directly)
           const meshes = scene.meshes.filter((m: any) => {
@@ -266,6 +1235,313 @@ export default function BabylonSceneContent() {
           
           console.log(`💡 Turned ON ${scene.lights.length} lights from GLB`);
           
+          // Setup camera based on mode - define before avatar loading
+          const setupCamera = (mode: 'first' | 'third', avatarMesh: AbstractMesh | null) => {
+            // Cleanup previous camera observers
+            if (camera && (camera as any).__avatarObserver) {
+              scene.onBeforeRenderObservable.remove((camera as any).__avatarObserver);
+            }
+            
+            if (camera && typeof camera.detachControl === 'function') {
+              camera.detachControl();
+            }
+            
+            if (!avatarMesh) {
+              console.warn('⚠️ Cannot setup camera: avatar not loaded yet');
+              return;
+            }
+            
+            if (mode === 'first') {
+              // First person - camera at avatar head position
+              const avatarPos = avatarMesh.position.clone();
+              avatarPos.y += 1.6; // Eye level
+              const freeCam = new FreeCamera('firstPersonCamera', avatarPos, scene);
+              freeCam.attachControl(canvasRef.current, true);
+              freeCam.speed = 0.3;
+              freeCam.angularSensibility = 1000;
+              freeCam.inertia = 0.9;
+              freeCam.applyGravity = false;
+              freeCam.keysUp = [87]; // W
+              freeCam.keysDown = [83]; // S
+              freeCam.keysLeft = [65]; // A
+              freeCam.keysRight = [68]; // D
+              
+              // Link camera to avatar movement - update avatar position from camera
+              const avatarUpdateObserver = scene.onBeforeRenderObservable.add(() => {
+                if (avatarMesh && freeCam) {
+                  const camPos = freeCam.position.clone();
+                  camPos.y -= 1.6; // Adjust to avatar body position
+                  avatarMesh.position.x = camPos.x;
+                  avatarMesh.position.z = camPos.z;
+                  avatarMesh.rotation.y = freeCam.rotation.y;
+                }
+              });
+              
+              // Store observer for cleanup
+              (freeCam as any).__avatarObserver = avatarUpdateObserver;
+              
+              scene.activeCamera = freeCam;
+              camera = freeCam;
+              freeCameraModeRef.current = true;
+              console.log('✅ First person camera activated');
+            } else {
+              // Third person - ArcRotateCamera following avatar
+              const arcCam = new ArcRotateCamera(
+                'thirdPersonCamera',
+                -Math.PI / 2,
+                Math.PI / 3,
+                5,
+                avatarMesh.position.clone(),
+                scene
+              );
+              arcCam.attachControl(canvasRef.current, true);
+              arcCam.lowerRadiusLimit = 2;
+              arcCam.upperRadiusLimit = 20;
+              arcCam.wheelDeltaPercentage = 0.01;
+              
+              // Enhanced mouse sensitivity for third-person camera
+              arcCam.angularSensibilityX = 500;
+              arcCam.angularSensibilityY = 500;
+              arcCam.panningSensibility = 50;
+              arcCam.inertia = 0.9;
+              
+              console.log('✅ Third-person camera controls linked to cursor');
+              
+              // Link camera to avatar - camera follows avatar
+              const cameraFollowObserver = scene.onBeforeRenderObservable.add(() => {
+                if (avatarMesh && arcCam) {
+                  arcCam.setTarget(avatarMesh.position);
+                }
+              });
+              
+              // Store observer for cleanup
+              (arcCam as any).__avatarObserver = cameraFollowObserver;
+              
+              scene.activeCamera = arcCam;
+              camera = arcCam;
+              freeCameraModeRef.current = false;
+              console.log('✅ Third person camera activated');
+            }
+          };
+          
+          // Create avatar - try to load Mixamo GLB, fallback to capsule
+          const createAvatar = async () => {
+            if (avatarRef.current) {
+              avatarRef.current.dispose();
+            }
+            
+            // Try to load Mixamo avatar GLB
+            const avatarFiles = ['avatar.glb', 'mixamo_avatar.glb', 'character.glb'];
+            let avatarLoaded = false;
+            
+            for (const avatarFile of avatarFiles) {
+              try {
+                console.log(`📦 Attempting to load avatar: ${avatarFile}`);
+                const result = await SceneLoader.ImportMeshAsync('', '/', avatarFile, scene);
+                
+                if (result.meshes.length > 0) {
+                  // Find the root mesh (usually the largest or first mesh)
+                  let avatarMesh: AbstractMesh | null = null;
+                  
+                  // Look for a root mesh or the largest mesh
+                  const meshes = result.meshes.filter(m => m.getTotalVertices && m.getTotalVertices() > 0);
+                  if (meshes.length > 0) {
+                    // Find root mesh (no parent) or largest mesh
+                    avatarMesh = meshes.find(m => !m.parent) || meshes[0];
+                    
+                    // If still not found, use the largest mesh
+                    if (!avatarMesh) {
+                      let maxVertices = 0;
+                      meshes.forEach(m => {
+                        const vertices = m.getTotalVertices();
+                        if (vertices > maxVertices) {
+                          maxVertices = vertices;
+                          avatarMesh = m;
+                        }
+                      });
+                    }
+                  }
+                  
+                  if (avatarMesh) {
+                    // Set up the avatar mesh
+                    avatarMesh.name = 'avatar';
+                    avatarMesh.position = new Vector3(0, 0, 0);
+                    
+                    // Enable shadows - receiveShadows is valid, but castShadows must use shadowGenerator
+                    avatarMesh.receiveShadows = true;
+                    
+                    // Add to shadow generator if it exists
+                    const mainLight = scene.getLightByName('mainLight');
+                    if (mainLight && (mainLight as any).getShadowGenerator) {
+                      const shadowGenerator = (mainLight as any).getShadowGenerator();
+                      if (shadowGenerator) {
+                        shadowGenerator.addShadowCaster(avatarMesh, true);
+                      }
+                    }
+                    
+                    // Enable shadows for all child meshes
+                    avatarMesh.getChildMeshes().forEach((child: AbstractMesh) => {
+                      child.receiveShadows = true;
+                      if (mainLight && (mainLight as any).getShadowGenerator) {
+                        const shadowGenerator = (mainLight as any).getShadowGenerator();
+                        if (shadowGenerator) {
+                          shadowGenerator.addShadowCaster(child, true);
+                        }
+                      }
+                    });
+                    
+                    // Scale avatar if needed (Mixamo avatars are typically ~1.8m tall)
+                    // Check bounding box to determine if scaling is needed
+                    if (avatarMesh.getBoundingInfo) {
+                      const bounds = avatarMesh.getBoundingInfo();
+                      const height = bounds.boundingBox.extendSizeWorld.y * 2;
+                      // If avatar is too small or too large, scale it
+                      if (height < 1.0 || height > 3.0) {
+                        const targetHeight = 1.8; // Standard human height
+                        const scale = targetHeight / height;
+                        avatarMesh.scaling = new Vector3(scale, scale, scale);
+                        console.log(`📏 Scaled avatar from ${height.toFixed(2)}m to ${targetHeight}m (scale: ${scale.toFixed(2)})`);
+                      }
+                    }
+                    
+                    avatarRef.current = avatarMesh;
+                    console.log(`✅ Mixamo avatar loaded: ${avatarFile}`);
+                    avatarLoaded = true;
+                    return avatarMesh;
+                  }
+                }
+              } catch (error: any) {
+                console.log(`⚠️ Failed to load ${avatarFile}:`, error.message);
+                // Continue to next file or fallback
+              }
+            }
+            
+            // Fallback: Create a simple capsule avatar if GLB loading failed
+            if (!avatarLoaded) {
+              console.log('💡 Creating fallback capsule avatar (place avatar.glb in /public folder for Mixamo avatar)');
+              
+              const avatarBody = MeshBuilder.CreateCylinder('avatarBody', {
+                height: 1.8,
+                diameter: 0.4,
+                tessellation: 16
+              }, scene);
+              
+              const avatarHead = MeshBuilder.CreateSphere('avatarHead', {
+                diameter: 0.35,
+                segments: 16
+              }, scene);
+              
+              avatarHead.position.y = 1.0;
+              avatarHead.parent = avatarBody;
+              
+              // Create avatar material
+              const avatarMaterial = new StandardMaterial('avatarMat', scene);
+              avatarMaterial.diffuseColor = new Color3(0.2, 0.4, 0.8); // Blue-ish
+              avatarMaterial.specularColor = new Color3(0.5, 0.5, 0.5);
+              avatarBody.material = avatarMaterial;
+              avatarHead.material = avatarMaterial;
+              
+              // Position avatar at origin
+              avatarBody.position = new Vector3(0, 0.9, 0);
+              avatarBody.receiveShadows = true;
+              avatarHead.receiveShadows = true;
+              
+              // Add to shadow generator if it exists
+              const mainLight = scene.getLightByName('mainLight');
+              if (mainLight && (mainLight as any).getShadowGenerator) {
+                const shadowGenerator = (mainLight as any).getShadowGenerator();
+                if (shadowGenerator) {
+                  shadowGenerator.addShadowCaster(avatarBody, true);
+                  shadowGenerator.addShadowCaster(avatarHead, true);
+                }
+              }
+              
+              avatarRef.current = avatarBody;
+              console.log('✅ Fallback capsule avatar created');
+              return avatarBody;
+            }
+            
+            return avatarRef.current;
+          };
+          
+          // Load avatar asynchronously
+          const avatarPromise = createAvatar();
+          let avatar: AbstractMesh | null = null;
+          
+          avatarPromise.then((loadedAvatar) => {
+            avatar = loadedAvatar;
+            // Setup camera after avatar is loaded
+            setupCamera(cameraMode, avatar);
+            
+            // Subscribe to camera mode changes
+            const cameraUnsubscribe = useCameraStore.subscribe((state) => {
+              const mode = state.cameraMode;
+              if (sceneRef.current && avatar) {
+                setupCamera(mode, avatar);
+              }
+            });
+            
+            // Store unsubscribe for cleanup
+            (window as any).__cameraUnsubscribe = cameraUnsubscribe;
+          }).catch((error) => {
+            console.error('❌ Failed to create avatar:', error);
+            // Create fallback avatar synchronously
+            const avatarBody = MeshBuilder.CreateCylinder('avatarBody', {
+              height: 1.8,
+              diameter: 0.4,
+              tessellation: 16
+            }, scene);
+            const avatarHead = MeshBuilder.CreateSphere('avatarHead', {
+              diameter: 0.35,
+              segments: 16
+            }, scene);
+            avatarHead.position.y = 1.0;
+            avatarHead.parent = avatarBody;
+            const avatarMaterial = new StandardMaterial('avatarMat', scene);
+            avatarMaterial.diffuseColor = new Color3(0.2, 0.4, 0.8);
+            avatarBody.material = avatarMaterial;
+            avatarHead.material = avatarMaterial;
+            avatarBody.position = new Vector3(0, 0.9, 0);
+            avatarBody.receiveShadows = true;
+            avatarHead.receiveShadows = true;
+            
+            // Add to shadow generator if it exists
+            const mainLight = scene.getLightByName('mainLight');
+            if (mainLight && (mainLight as any).getShadowGenerator) {
+              const shadowGenerator = (mainLight as any).getShadowGenerator();
+              if (shadowGenerator) {
+                shadowGenerator.addShadowCaster(avatarBody, true);
+                shadowGenerator.addShadowCaster(avatarHead, true);
+              }
+            }
+            
+            avatarRef.current = avatarBody;
+            avatar = avatarBody;
+            setupCamera(cameraMode, avatar);
+            
+            // Subscribe to camera mode changes
+            const cameraUnsubscribe = useCameraStore.subscribe((state) => {
+              const mode = state.cameraMode;
+              if (sceneRef.current && avatar) {
+                setupCamera(mode, avatar);
+              }
+            });
+            (window as any).__cameraUnsubscribe = cameraUnsubscribe;
+          });
+          
+          // Temporary avatar for initial camera setup (will be replaced when GLB loads)
+          const tempAvatar = MeshBuilder.CreateCylinder('tempAvatar', {
+            height: 1.8,
+            diameter: 0.4,
+            tessellation: 16
+          }, scene);
+          tempAvatar.position = new Vector3(0, 0.9, 0);
+          tempAvatar.setEnabled(false); // Hide temporary avatar
+          avatar = tempAvatar;
+          
+          // Initial camera setup with temporary avatar (will be updated when real avatar loads)
+          setupCamera(cameraMode, tempAvatar);
+          
           // Find and enable screens from GLB model - turn them ON
           const screenMeshes = meshes.filter((mesh: any) => {
             const name = mesh.name.toLowerCase();
@@ -277,28 +1553,41 @@ export default function BabylonSceneContent() {
           });
           
           console.log(`📺 Found ${screenMeshes.length} screen meshes in GLB`);
+          screenMaterialsRef.current = []; // Clear previous screen materials
           screenMeshes.forEach((screenMesh: any) => {
             screenMesh.setEnabled(true);
             screenMesh.visibility = 1;
             screenMesh.isVisible = true;
             
             // Enable emissive materials on screens to make them glow/visible
+            // Store base emissive values so screens stay bright regardless of scene lighting
             if (screenMesh.material) {
               const materials = Array.isArray(screenMesh.material) ? screenMesh.material : [screenMesh.material];
               materials.forEach((mat: any) => {
                 // Turn on emissive for screens
+                let baseEmissive: Color3;
                 if (mat.emissiveColor) {
                   // If emissive is very low or zero, set it to visible
                   const emissive = mat.emissiveColor;
                   if (emissive.r < 0.3 && emissive.g < 0.3 && emissive.b < 0.3) {
-                    mat.emissiveColor = new Color3(0.5, 0.5, 0.5); // Make screens glow
+                    baseEmissive = new Color3(0.5, 0.5, 0.5); // Make screens glow
+                  } else {
+                    baseEmissive = new Color3(emissive.r, emissive.g, emissive.b);
                   }
                 } else {
                   // Add emissive if it doesn't exist
-                  mat.emissiveColor = new Color3(0.5, 0.5, 0.5);
+                  baseEmissive = new Color3(0.5, 0.5, 0.5);
                 }
-                mat.emissiveIntensity = mat.emissiveIntensity || 1.0;
+                mat.emissiveColor = baseEmissive;
+                mat.emissiveIntensity = mat.emissiveIntensity || 5.0; // High intensity so screens stay bright
+                // Disable lighting on emissive materials so they're not affected by scene lighting
+                if (mat.disableLighting !== undefined) {
+                  mat.disableLighting = true; // Screens emit their own light
+                }
                 mat.markAsDirty();
+                
+                // Store screen material reference with base emissive
+                screenMaterialsRef.current.push({ material: mat, baseEmissive });
               });
             }
             console.log(`  ✅ Enabled screen: ${screenMesh.name}`);
@@ -318,15 +1607,32 @@ export default function BabylonSceneContent() {
                     const currentMax = Math.max(emissive.r, emissive.g, emissive.b);
                     if (currentMax > 0) {
                       // Scale up existing emissive
-                      mat.emissiveColor = new Color3(
+                      const baseEmissive = new Color3(
                         Math.min(1, emissive.r * 2),
                         Math.min(1, emissive.g * 2),
                         Math.min(1, emissive.b * 2)
                       );
-                      mat.emissiveIntensity = mat.emissiveIntensity || 1.0;
+                      mat.emissiveColor = baseEmissive;
+                      mat.emissiveIntensity = mat.emissiveIntensity || 5.0;
+                      // Disable lighting on emissive materials so they're not affected by scene lighting
+                      if (mat.disableLighting !== undefined) {
+                        mat.disableLighting = true;
+                      }
                       mat.markAsDirty();
+                      
+                      // Store emissive material reference
+                      screenMaterialsRef.current.push({ material: mat, baseEmissive });
                       console.log(`  💡 Turned on emissive for: ${mesh.name}`);
                     }
+                  } else if (emissiveIntensity >= 0.3) {
+                    // Already bright emissive - ensure it stays bright
+                    const baseEmissive = new Color3(emissive.r, emissive.g, emissive.b);
+                    mat.emissiveIntensity = mat.emissiveIntensity || 5.0;
+                    if (mat.disableLighting !== undefined) {
+                      mat.disableLighting = true;
+                    }
+                    mat.markAsDirty();
+                    screenMaterialsRef.current.push({ material: mat, baseEmissive });
                   }
                 }
               });
@@ -559,7 +1865,9 @@ export default function BabylonSceneContent() {
             mesh.getChildMeshes().forEach(processMesh);
           });
           
-          // Create shadow generator
+          // Create shadow generator if we have a directional light
+          const mainLight = scene.getLightByName('mainLight') || lightsRef.current.mainDir;
+          if (mainLight && mainLight instanceof DirectionalLight) {
           const shadowGenerator = new ShadowGenerator(2048, mainLight);
           shadowGenerator.useBlurExponentialShadowMap = true;
           shadowGenerator.blurKernel = 32;
@@ -574,6 +1882,10 @@ export default function BabylonSceneContent() {
               }
             }
           });
+            console.log('✅ Shadow generator created with mainLight');
+          } else {
+            console.log('⚠️ No mainLight found for shadow generator');
+          }
           
           // Adjust camera to see the cave better
           if (meshes.length > 0 && camera instanceof ArcRotateCamera) {
@@ -738,10 +2050,114 @@ export default function BabylonSceneContent() {
               scene.render();
               console.log('✅ Shader compilation initiated (materials marked dirty)');
             }
+            
+            // NOW apply initial vibe after scene is fully loaded and textures ready
+            // Longer delay to ensure everything is settled
+            setTimeout(() => {
+              if (pipelineRef.current && lightsRef.current.keySpot) {
+                console.log('🎨 Scene fully loaded and ready, applying initial vibe...');
+                applyVibe(scene, currentVibe);
+              } else {
+                console.warn('⚠️ Pipeline or lights not ready for vibe application');
+              }
+            }, 800); // Increased from 500ms to 800ms
           };
           
           // Start waiting for textures
           setTimeout(waitForTextures, 100);
+          
+          // Load Batman OBJ model
+          console.log('🦇 Loading Batman model...');
+          SceneLoader.ImportMeshAsync('', '/', 'batman.obj', scene)
+            .then((result) => {
+              console.log('✅ Batman model loaded!', result);
+              
+              if (result.meshes && result.meshes.length > 0) {
+                // Get the main mesh (usually the first one or the one without a parent)
+                let batmanMesh: AbstractMesh | null = null;
+                const meshes = result.meshes.filter((m: any) => m.getTotalVertices && m.getTotalVertices() > 0);
+                
+                if (meshes.length > 0) {
+                  // Find the root mesh (no parent) or use the largest mesh
+                  batmanMesh = meshes.find((m: any) => !m.parent) || meshes[0];
+                  
+                  if (!batmanMesh && meshes.length > 0) {
+                    // Find mesh with most vertices
+                    let maxVertices = 0;
+                    meshes.forEach((m: any) => {
+                      const vertices = m.getTotalVertices();
+                      if (vertices > maxVertices) {
+                        maxVertices = vertices;
+                        batmanMesh = m;
+                      }
+                    });
+                  }
+                }
+                
+                if (batmanMesh) {
+                  batmanMesh.name = 'batman';
+                  
+                  // Position Batman in the scene (center, on ground level)
+                  batmanMesh.position = new Vector3(0, 0, 0);
+                  
+                  // Scale Batman to appropriate size (adjust as needed)
+                  if (batmanMesh.getBoundingInfo) {
+                    const bounds = batmanMesh.getBoundingInfo();
+                    const height = bounds.boundingBox.extendSizeWorld.y * 2;
+                    const targetHeight = 1.8; // ~1.8 meters tall
+                    if (height > 0.1 && height !== targetHeight) {
+                      const scale = targetHeight / height;
+                      batmanMesh.scaling = new Vector3(scale, scale, scale);
+                      console.log(`📏 Scaled Batman from ${height.toFixed(2)}m to ${targetHeight}m (scale: ${scale.toFixed(2)})`);
+                    }
+                  }
+                  
+                  // Enable shadows
+                  batmanMesh.receiveShadows = true;
+                  
+                  // Apply shadows to all child meshes
+                  batmanMesh.getChildMeshes().forEach((child: AbstractMesh) => {
+                    child.receiveShadows = true;
+                  });
+                  
+                  // Add to shadow generator if it exists
+                  const mainLight = scene.getLightByName('mainLight');
+                  if (mainLight && (mainLight as any).getShadowGenerator) {
+                    const shadowGenerator = (mainLight as any).getShadowGenerator();
+                    if (shadowGenerator) {
+                      shadowGenerator.addShadowCaster(batmanMesh, true);
+                      batmanMesh.getChildMeshes().forEach((child: AbstractMesh) => {
+                        shadowGenerator.addShadowCaster(child, true);
+                      });
+                    }
+                  }
+                  
+                  // Ensure materials are properly set up
+                  if (batmanMesh.material) {
+                    const materials = Array.isArray(batmanMesh.material) 
+                      ? batmanMesh.material 
+                      : [batmanMesh.material];
+                    
+                    materials.forEach((mat: any) => {
+                      if (mat) {
+                        mat.receiveShadows = true;
+                        mat.markAsDirty();
+                      }
+                    });
+                  }
+                  
+                  console.log(`✅ Batman positioned at (${batmanMesh.position.x}, ${batmanMesh.position.y}, ${batmanMesh.position.z})`);
+          } else {
+                  console.warn('⚠️ No valid Batman mesh found in OBJ file');
+                }
+              } else {
+                console.warn('⚠️ Batman OBJ loaded but no meshes found');
+              }
+            })
+            .catch((error) => {
+              console.error('❌ Failed to load Batman model:', error);
+              console.log('💡 Make sure batman.obj is in the /public folder');
+            });
         })
         .catch((error) => {
           console.error('❌ Failed to load batcave:', error);
@@ -749,91 +2165,75 @@ export default function BabylonSceneContent() {
           // Keep scene visible even on error
         });
 
-      // Keyboard controls
+      // Keyboard controls - attach to canvas and window for maximum coverage
       const onKeyDown = (e: KeyboardEvent) => {
+        // Only handle if not typing in an input
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+          return;
+        }
+        
+        // Prevent default for all game keys to avoid browser shortcuts
+        if (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || 
+            e.code === 'KeyZ' || e.code === 'KeyX' || e.code === 'KeyF' || e.code === 'KeyC' ||
+            e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        
         keys[e.code] = true;
+        (window as any).__babylonKeys[e.code] = true; // Update global too
+        console.log(`⌨️ Key pressed: ${e.code}`);
         
-        // Zoom in with Z
-        if (e.code === 'KeyZ' && camera instanceof ArcRotateCamera) {
-          e.preventDefault();
-          camera.radius = Math.max(camera.radius - 1, camera.lowerRadiusLimit || 2);
-        }
+        // Z/X zoom handled in render loop for continuous zoom
         
-        // Zoom out with X
-        if (e.code === 'KeyX' && camera instanceof ArcRotateCamera) {
-          e.preventDefault();
-          camera.radius = Math.min(camera.radius + 1, camera.upperRadiusLimit || 100);
-        }
-        
-        // Toggle free camera with F
-        if (e.code === 'KeyF') {
-          e.preventDefault();
-          freeCameraModeRef.current = !freeCameraModeRef.current;
-          
-          if (freeCameraModeRef.current) {
-            // Switch to FreeCamera with Counter-Strike style controls
-            const currentPos = camera?.position.clone() || new Vector3(0, 2, 5);
-            
-            if (camera && typeof camera.detachControl === 'function') {
-              camera.detachControl();
-            }
-            
-            const freeCam = new FreeCamera('freeCamera', currentPos, scene);
-            
-            // Counter-Strike style smooth mouse controls
-            freeCam.attachControl(canvasRef.current, true);
-            freeCam.speed = 0.3; // Smooth movement speed
-            freeCam.angularSensibility = 1000; // Lower = more sensitive (smoother mouse)
-            freeCam.inertia = 0.9; // Smooth deceleration
-            freeCam.applyGravity = false; // No gravity for free cam
-            
-            // Configure WASD keys for smooth movement relative to camera
-            // W/S = forward/backward, A/D = strafe left/right
-            freeCam.keysUp = [87]; // W
-            freeCam.keysDown = [83]; // S
-            freeCam.keysLeft = [65]; // A
-            freeCam.keysRight = [68]; // D
-            
-            // If switching from ArcRotateCamera, try to preserve viewing direction
-            if (camera instanceof ArcRotateCamera) {
-              const forward = camera.getForwardRay().direction;
-              freeCam.setTarget(currentPos.add(forward.scale(5)));
-            }
-            
-            scene.activeCamera = freeCam;
-            camera = freeCam;
-            console.log('✅ Switched to Free Camera (CS-style controls)');
+        // Toggle pointer lock with C - for FPS-style mouse control
+        if (e.code === 'KeyC' && canvasRef.current) {
+          if (document.pointerLockElement) {
+            // Exit pointer lock
+            document.exitPointerLock();
+            console.log('🔓 Pointer unlocked');
           } else {
-            // Switch back to ArcRotateCamera
-            if (camera && typeof camera.detachControl === 'function') {
-              camera.detachControl();
-            }
-            const currentPos = camera?.position || new Vector3(0, 2, 5);
-            const arcCam = new ArcRotateCamera(
-              'arcCamera',
-              -Math.PI / 2,
-              Math.PI / 3,
-              currentPos.length(),
-              Vector3.Zero(),
-              scene
-            );
-            arcCam.attachControl(canvasRef.current, true);
-            arcCam.lowerRadiusLimit = 2;
-            arcCam.upperRadiusLimit = 100;
-            arcCam.wheelDeltaPercentage = 0.01;
-            scene.activeCamera = arcCam;
-            camera = arcCam;
-            console.log('✅ Switched to Arc Rotate Camera');
+            // Request pointer lock
+            canvasRef.current.requestPointerLock();
+            console.log('🔒 Pointer locked');
           }
+        }
+        
+        // Toggle free camera with F - now uses cameraStore
+        if (e.code === 'KeyF') {
+          const { toggleCameraMode } = useCameraStore.getState();
+          toggleCameraMode();
         }
       };
 
       const onKeyUp = (e: KeyboardEvent) => {
+        // Only handle if not typing in an input
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+          return;
+        }
+        
+        if (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || 
+            e.code === 'KeyZ' || e.code === 'KeyX' || e.code === 'KeyF' || e.code === 'KeyC' ||
+            e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+          e.preventDefault();
+          e.stopPropagation();
+        }
         keys[e.code] = false;
+        (window as any).__babylonKeys[e.code] = false; // Update global too
       };
 
-      window.addEventListener('keydown', onKeyDown);
-      window.addEventListener('keyup', onKeyUp);
+      // Attach to both canvas and window
+      if (canvasRef.current) {
+        canvasRef.current.addEventListener('keydown', onKeyDown);
+        canvasRef.current.addEventListener('keyup', onKeyUp);
+        canvasRef.current.setAttribute('tabindex', '0'); // Make canvas focusable
+        console.log('✅ Keyboard listeners attached to canvas');
+      }
+      window.addEventListener('keydown', onKeyDown, true);
+      window.addEventListener('keyup', onKeyUp, true);
+      console.log('✅ Keyboard event listeners attached to window');
 
       // Prevent browser zoom on touch - handle touch gestures properly
       const preventZoom = (e: TouchEvent) => {
@@ -866,17 +2266,51 @@ export default function BabylonSceneContent() {
       window.addEventListener('wheel', preventPageZoom, { passive: false });
 
       // Enhanced free camera movement with Space/Shift for vertical movement
-      // Using FreeCamera's built-in WASD + manual vertical control for smooth CS-style feel
-      scene.onBeforeRenderObservable.add(() => {
-        if (freeCameraModeRef.current && camera instanceof FreeCamera) {
+      // Handle avatar movement in first person and third person modes
+      // Add continuous forward movement in camera look direction
+      const movementObserver = scene.onBeforeRenderObservable.add(() => {
+        const currentCameraMode = useCameraStore.getState().cameraMode;
+        const currentKeys = (window as any).__babylonKeys || keys; // Fallback to local keys
+        
+        if (camera instanceof FreeCamera && currentCameraMode === 'first') {
+          // First person: Movement in camera look direction
+          const moveSpeed = 0.15;
+          const forward = camera.getForwardRay().direction;
+          // FIXED: Swap cross product order to fix A/D inversion (left-handed system)
+          const right = Vector3.Cross(Vector3.Up(), forward).normalize();
+          
+          let moveVector = Vector3.Zero();
+          
+          // W - Move forward in look direction
+          if (currentKeys['KeyW'] === true) {
+            moveVector = moveVector.add(forward.scale(moveSpeed));
+          }
+          // S - Move backward
+          if (currentKeys['KeyS'] === true) {
+            moveVector = moveVector.add(forward.scale(-moveSpeed));
+          }
+          // A - Strafe left (FIXED: now correctly moves left)
+          if (currentKeys['KeyA'] === true) {
+            moveVector = moveVector.add(right.scale(-moveSpeed));
+          }
+          // D - Strafe right (FIXED: now correctly moves right)
+          if (currentKeys['KeyD'] === true) {
+            moveVector = moveVector.add(right.scale(moveSpeed));
+          }
+          
+          // Apply horizontal movement
+          if (moveVector.length() > 0) {
+            camera.position.addInPlace(moveVector);
+          }
+          
           // Vertical movement with Space (up) and Shift (down)
           const verticalSpeed = 0.15;
           let verticalMove = 0;
           
-          if (keys['Space']) {
+          if (currentKeys['Space'] === true) {
             verticalMove += verticalSpeed;
           }
-          if (keys['ShiftLeft'] || keys['ShiftRight']) {
+          if (currentKeys['ShiftLeft'] === true || currentKeys['ShiftRight'] === true) {
             verticalMove -= verticalSpeed;
           }
           
@@ -886,8 +2320,52 @@ export default function BabylonSceneContent() {
             newPos.y += verticalMove;
             camera.position = newPos;
           }
+        } else if (currentCameraMode === 'third' && avatarRef.current) {
+          // Third person: Move avatar with WASD in camera relative direction
+          const moveSpeed = 0.1;
+          const avatar = avatarRef.current;
+          
+          if (camera instanceof ArcRotateCamera) {
+            const forward = camera.getForwardRay().direction;
+            // FIXED: Swap cross product order to fix A/D inversion (left-handed system)
+            const right = Vector3.Cross(Vector3.Up(), forward).normalize();
+            
+            let moveX = 0;
+            let moveZ = 0;
+            
+            // Check keys individually to avoid issues
+            if (currentKeys['KeyW'] === true) moveZ += moveSpeed;
+            if (currentKeys['KeyS'] === true) moveZ -= moveSpeed;
+            // FIXED: A/D now correctly strafe left/right
+            if (currentKeys['KeyA'] === true) moveX -= moveSpeed;
+            if (currentKeys['KeyD'] === true) moveX += moveSpeed;
+            
+            if (moveX !== 0 || moveZ !== 0) {
+              const moveVector = forward.scale(moveZ).add(right.scale(moveX));
+              avatar.position.addInPlace(moveVector);
+              
+              // Rotate avatar to face movement direction
+              if (moveVector.length() > 0.01) {
+                avatar.rotation.y = Math.atan2(moveVector.x, moveVector.z);
+              }
+            }
+          }
+          
+          // FIXED: Z/X zoom now works continuously in render loop
+          if (camera instanceof ArcRotateCamera) {
+            const zoomSpeed = 0.5;
+            if (currentKeys['KeyZ'] === true) {
+              camera.radius = Math.max(camera.radius - zoomSpeed, camera.lowerRadiusLimit || 2);
+            }
+            if (currentKeys['KeyX'] === true) {
+              camera.radius = Math.min(camera.radius + zoomSpeed, camera.upperRadiusLimit || 100);
+            }
+          }
         }
       });
+      
+      // Store observer for cleanup
+      (window as any).__movementObserver = movementObserver;
 
       // Start render loop
       console.log('🎬 Starting render loop...');
@@ -902,18 +2380,30 @@ export default function BabylonSceneContent() {
       };
       window.addEventListener('resize', handleResize);
 
+      // Return cleanup function from async IIFE
       return () => {
         console.log('🧹 Cleaning up...');
-        window.removeEventListener('keydown', onKeyDown);
-        window.removeEventListener('keyup', onKeyUp);
+        window.removeEventListener('keydown', onKeyDown, true);
+        window.removeEventListener('keyup', onKeyUp, true);
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('wheel', preventPageZoom);
         
-        // Remove touch event listeners
+        // Unsubscribe from stores
+        if (typeof unsubscribe !== 'undefined') unsubscribe();
+        if (typeof unsubscribeVibes !== 'undefined') unsubscribeVibes();
+        
+        // Remove movement observer
+        if ((window as any).__movementObserver) {
+          scene.onBeforeRenderObservable.remove((window as any).__movementObserver);
+        }
+        
+        // Remove touch and keyboard event listeners from canvas
         if (canvasRef.current) {
           canvasRef.current.removeEventListener('touchstart', preventZoom);
           canvasRef.current.removeEventListener('touchmove', preventZoom);
           canvasRef.current.removeEventListener('touchend', preventDoubleTapZoom);
+          canvasRef.current.removeEventListener('keydown', onKeyDown);
+          canvasRef.current.removeEventListener('keyup', onKeyUp);
         }
         
         if (camera && typeof camera.detachControl === 'function') {
@@ -930,8 +2420,10 @@ export default function BabylonSceneContent() {
     } catch (err: any) {
       console.error('❌ Error:', err);
       console.error('Error stack:', err.stack);
+      return () => {}; // Return empty cleanup on error
     }
-  }, []);
+    })(); // Close async IIFE and return cleanup
+  }, [currentVibe, useWebGPU]);
 
   return (
     <canvas
@@ -945,6 +2437,14 @@ export default function BabylonSceneContent() {
         opacity: 1,
         visibility: 'visible'
       }}
+      onClick={(e) => {
+        // Focus canvas on click to enable keyboard input
+        if (canvasRef.current) {
+          canvasRef.current.focus();
+          console.log('✅ Canvas focused for keyboard input');
+        }
+      }}
+      tabIndex={0}
     />
   );
 }
