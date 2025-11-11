@@ -365,10 +365,10 @@ export default function BabylonSceneContent() {
       scene.imageProcessingConfiguration.vignetteWeight = 0.25; // More dramatic
       scene.imageProcessingConfiguration.vignetteCameraFov = 1.5; // Wider falloff
       
-      // Tone mapping - neutral for grungy PBR materials
+      // Tone mapping - balanced for grungy PBR materials
       scene.imageProcessingConfiguration.toneMappingEnabled = true;
       scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC
-      scene.imageProcessingConfiguration.exposure = 1.0; // Neutral exposure - let GLB materials show
+      scene.imageProcessingConfiguration.exposure = 0.90; // Slightly lower for darker, grungier cave look
       scene.imageProcessingConfiguration.contrast = 1.0; // Neutral contrast (no boosting)
       
       // FXAA for smooth edges
@@ -629,9 +629,26 @@ export default function BabylonSceneContent() {
           return;
         }
         
-        // ===== USE ONLY GLB LIGHTS - NO MANUAL LIGHT CREATION =====
-        console.log(`🔴 USING ONLY GLB LIGHTS - No manual light creation`);
-        console.log(`   GLB lights available: ${scene.lights.length}`);
+        // ===== CHECK GLB LIGHTS FIRST, FALLBACK IF NONE =====
+        const glbLightCount = scene.lights.length;
+        console.log(`🔍 Checking GLB lights: ${glbLightCount} found`);
+        
+        if (glbLightCount === 0) {
+          console.log('⚠️ GLB has 0 lights - adding minimal fallback HemisphericLight');
+          
+          // Minimal fallback ambient light (cave vibes, not too bright)
+          const baseAmbient = 1.8;
+          const ambientLight = new HemisphericLight('fallbackAmbient', new Vector3(0, 1, 0), scene);
+          ambientLight.intensity = baseAmbient * currentSceneLighting;
+          ambientLight.diffuse = new Color3(0.95, 0.92, 0.88); // Subtle warm (mostly neutral)
+          ambientLight.groundColor = new Color3(0.15, 0.15, 0.15); // Neutral grey ground
+          lightsRef.current.ambient = ambientLight;
+          baseIntensitiesRef.current.ambient = baseAmbient;
+          
+          console.log(`✅ Fallback ambient light created (intensity: ${baseAmbient})`);
+        } else {
+          console.log(`✅ Using ${glbLightCount} lights from GLB file`);
+        }
       };
       
       // Expose lights refs globally so LightsPanel can access them (do this early)
@@ -928,22 +945,24 @@ export default function BabylonSceneContent() {
           const lampMeshes = emissiveMeshes.length >= 2 ? emissiveMeshes : lampMeshesByName;
           console.log(`  ✅ Using ${lampMeshes.length} lamp meshes for light creation`);
           
-          // Make yellow lamp MESHES glow (emissive ONLY - no light creation)
-          console.log('  💡 Making yellow lamp MESHES emissive (NO light creation)...');
+          // Make yellow lamp MESHES glow (emissive)
+          console.log('  💡 Making yellow lamp MESHES emissive...');
           
+          let emissiveMeshCount = 0;
           lampMeshes.forEach((lampMesh: any) => {
             if (lampMesh.material) {
               const materials = Array.isArray(lampMesh.material) ? lampMesh.material : [lampMesh.material];
               materials.forEach((mat: any) => {
                 if (mat.emissiveColor || mat.emissiveTexture) {
-                  mat.emissiveIntensity = 8.0; // Moderate glow (not too bright)
+                  mat.emissiveIntensity = 6.0; // Moderate glow (subtle, not overdone)
                   mat.disableLighting = true; // Meshes emit light, not receive
                   mat.markAsDirty();
+                  emissiveMeshCount++;
                 }
               });
             }
           });
-          console.log(`    ✅ Made ${lampMeshes.length} yellow lamp meshes emissive (NO PointLights created)`);
+          console.log(`    ✅ Made ${emissiveMeshCount} yellow lamp materials emissive (intensity: 6.0)`);
           
           console.log('✅ GLB native lights loaded and stored as default preset');
           console.log('🖼️ Textures:', scene.textures.length);
