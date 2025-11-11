@@ -636,50 +636,50 @@ export default function BabylonSceneContent() {
         scene.ambientColor = new Color3(0, 0, 0); // Pure black base for contrast
         
         if (preset === 'default' || preset === 'dramatic') {
-          // EVEN WARM LIGHTING - Wide soft lights for balanced scene visibility (matches reference)
+          // BRIGHT EVEN LIGHTING - Significantly increased for visibility
           
-          // KEY LIGHT: Wide soft yellow fill from above
-          const baseKeySpot = preset === 'dramatic' ? 2200 : 1200;
+          // KEY LIGHT: Bright overhead fill
+          const baseKeySpot = preset === 'dramatic' ? 3500 : 2500;
           const keyLight = new SpotLight('keyLight',
             new Vector3(0, 10, 0), // Directly above center
             new Vector3(0, -1, 0), // Straight down
-            Tools.ToRadians(45), // WIDE angle for even coverage
-            0.5, // Higher exponent = soft, diffused light (not focused beam)
+            Tools.ToRadians(60), // VERY WIDE angle for maximum coverage
+            0.5, // Soft, diffused light
             scene);
-          keyLight.diffuse = new Color3(1.0, 0.85, 0.55); // Warm yellow-white (2800K)
+          keyLight.diffuse = new Color3(1.0, 0.95, 0.85); // Neutral warm white (5500K)
           keyLight.intensity = baseKeySpot * currentSceneLighting;
           keyLight.shadowEnabled = true;
-          keyLight.range = 80; // Wide coverage
+          keyLight.range = 100; // Extended range
           lightsRef.current.keySpot = keyLight;
           baseIntensitiesRef.current.keySpot = baseKeySpot;
           
-          // Soft shadows for even lighting
+          // Soft shadows
           const shadowGen = new ShadowGenerator(2048, keyLight);
-          shadowGen.useBlurExponentialShadowMap = true; // Soft diffused shadows
+          shadowGen.useBlurExponentialShadowMap = true;
           shadowGen.blurScale = 4;
           shadowGen.bias = 0.0001;
-          shadowGen.darkness = 0.3; // Very light shadows
+          shadowGen.darkness = 0.2; // Lighter shadows
           
-          // RIM LIGHT: Additional wide soft fill
-          const baseRimSpot = preset === 'dramatic' ? 1800 : 900;
+          // RIM LIGHT: Additional bright fill
+          const baseRimSpot = preset === 'dramatic' ? 3000 : 2200;
           const rimLight = new SpotLight('rimLight',
             new Vector3(0, 10, -5), // Elevated back
             new Vector3(0, -1, 0.2), // Angled down and forward
-            Tools.ToRadians(45), // WIDE angle
+            Tools.ToRadians(60), // VERY WIDE angle
             0.5, // Soft diffused
             scene);
-          rimLight.diffuse = new Color3(1.0, 0.85, 0.55); // Matching warm yellow-white
+          rimLight.diffuse = new Color3(1.0, 0.95, 0.85); // Matching neutral warm white
           rimLight.intensity = baseRimSpot * currentSceneLighting;
           rimLight.shadowEnabled = false;
-          rimLight.range = 80;
+          rimLight.range = 100;
           lightsRef.current.rimSpot = rimLight;
           baseIntensitiesRef.current.rimSpot = baseRimSpot;
           
-          // Fill Light (Soft ambient - minimal)
-          const baseAmbient = preset === 'dramatic' ? currentAmbient * 0.5 : currentAmbient;
+          // Fill Light (Significant ambient for overall visibility)
+          const baseAmbient = preset === 'dramatic' ? 1.0 : 1.5;
           const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 100, 0), scene);
           ambientLight.intensity = baseAmbient * currentSceneLighting;
-      ambientLight.diffuse = new Color3(1, 1, 1);
+          ambientLight.diffuse = new Color3(1, 1, 1);
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
           
