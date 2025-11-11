@@ -985,7 +985,7 @@ export default function BabylonSceneContent() {
           // BOOST THE LAMP MESH GLOW - make them SHINE!
           console.log('💡 Boosting lamp mesh emissive glow...');
           let brightLampCount = 0;
-          lampMeshes.slice(0, 10).forEach((lampMesh: any) => { // First 10 lamps
+          lampMeshes.forEach((lampMesh: any) => { // ALL LAMPS - remove limit
             if (lampMesh.material) {
               const materials = Array.isArray(lampMesh.material) ? lampMesh.material : [lampMesh.material];
               materials.forEach((mat: any) => {
@@ -1000,9 +1000,9 @@ export default function BabylonSceneContent() {
           });
           console.log(`   ✅ Boosted ${brightLampCount} lamp meshes to intensity 15.0`);
           
-          // Use MORE lamps for better coverage
-          const primaryLamps = lampMeshes.slice(0, 6); // Use first 6 orange/yellow lamps
-          console.log(`   🔦 Creating ${primaryLamps.length} SpotLights at lamp positions...`);
+          // Use ALL lamps for maximum cave illumination
+          const primaryLamps = lampMeshes; // USE ALL detected lamps
+          console.log(`   🔦 Creating ${primaryLamps.length} SpotLights at ALL lamp positions...`);
           
           // Sodium vapor color - warm golden orange
           const sodiumColor = new Color3(1.0, 0.7, 0.35); // Traditional street light
