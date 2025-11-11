@@ -43,6 +43,7 @@ export default function SocialPane({ people }: SocialPaneProps) {
   const [hoveredPerson, setHoveredPerson] = useState<string | null>(null);
   const [popupPosition, setPopupPosition] = useState<{ x: number; y: number } | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const sections = useProjectStore((state) => state.sections);
   const projects = useProjectStore((state) => state.projects);
   
@@ -78,11 +79,21 @@ export default function SocialPane({ people }: SocialPaneProps) {
   
   return (
     <>
-      <div className="absolute right-0 top-0 bottom-0 w-80 pointer-events-auto z-50 flex items-center">
+      <div className={`absolute top-0 bottom-0 pointer-events-auto z-50 flex items-center transition-all duration-300 ${
+        isHovered ? 'right-0 w-80' : 'right-0 w-20'
+      }`}>
         <div 
-          className="bg-black/90 backdrop-blur-sm p-6 flex flex-col overflow-y-auto overflow-x-visible relative w-full"
-          onMouseEnter={() => setShowHelp(true)}
-          onMouseLeave={() => setShowHelp(false)}
+          className={`bg-black/90 backdrop-blur-sm flex flex-col overflow-y-auto overflow-x-visible relative transition-all duration-300 ${
+            isHovered ? 'w-full p-6' : 'w-full p-4'
+          }`}
+          onMouseEnter={() => {
+            setIsHovered(true);
+            setShowHelp(true);
+          }}
+          onMouseLeave={() => {
+            setIsHovered(false);
+            setShowHelp(false);
+          }}
         >
           {/* Green gradient accent effect - left edge - spans full container height */}
           <div className="absolute top-0 left-0 bottom-0 w-1 opacity-90" style={{
@@ -99,37 +110,41 @@ export default function SocialPane({ people }: SocialPaneProps) {
             Loukyam
           </div>
           
-          {/* People in Fibonacci sets - vertical layout */}
-          {groups.length > 0 ? (
-            <div className="flex flex-col gap-4">
-              {groups.map((group, groupIndex) => (
-                <div key={groupIndex} className="flex gap-2 justify-start flex-wrap">
-                  {group.map((person) => (
-                    <div
-                      key={person.id}
-                      className="relative"
-                      onMouseEnter={(e) => handleMouseEnter(person.id, e)}
-                      onMouseLeave={handleMouseLeave}
-                    >
-                      {/* Person Icon */}
-                      <div className="w-12 h-12 rounded-full bg-gray-700 border-2 border-gray-600 hover:border-white transition-all cursor-pointer flex items-center justify-center overflow-hidden">
-                        {person.avatar ? (
-                          <img src={person.avatar} alt={person.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-lg font-semibold text-gray-400">
-                            {person.name.charAt(0).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
+          {/* People in Fibonacci sets - vertical layout - only show when hovered */}
+          {isHovered && (
+            <>
+              {groups.length > 0 ? (
+                <div className="flex flex-col gap-4">
+                  {groups.map((group, groupIndex) => (
+                    <div key={groupIndex} className="flex gap-2 justify-start flex-wrap">
+                      {group.map((person) => (
+                        <div
+                          key={person.id}
+                          className="relative"
+                          onMouseEnter={(e) => handleMouseEnter(person.id, e)}
+                          onMouseLeave={handleMouseLeave}
+                        >
+                          {/* Person Icon */}
+                          <div className="w-12 h-12 rounded-full bg-gray-700 border-2 border-gray-600 hover:border-white transition-all cursor-pointer flex items-center justify-center overflow-hidden">
+                            {person.avatar ? (
+                              <img src={person.avatar} alt={person.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-lg font-semibold text-gray-400">
+                                {person.name.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-xs text-gray-500 text-center py-4">
-              No people yet. Add supporters in the config panel.
-            </div>
+              ) : (
+                <div className="text-xs text-gray-500 text-center py-4">
+                  No people yet. Add supporters in the config panel.
+                </div>
+              )}
+            </>
           )}
           
         </div>
@@ -138,8 +153,14 @@ export default function SocialPane({ people }: SocialPaneProps) {
       {/* Help text - appears on hover */}
       {showHelp && (
         <div className="absolute right-[340px] top-1/2 -translate-y-1/2 pointer-events-auto z-[60] animate-fadeIn">
-          <div className="w-64 bg-black/95 backdrop-blur-sm rounded-lg p-4 border-2 border-white shadow-xl text-xs text-gray-300">
-            33 core supporters working together with you and are assisting you with your dreams n vice versa. feel free to add more. This is the social plane.
+          <div className="w-64 rounded-lg p-[1px]"
+            style={{
+              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.8), rgba(255, 255, 255, 0.6), rgba(74, 222, 128, 0.8))',
+            }}
+          >
+            <div className="bg-black/95 backdrop-blur-sm rounded-lg p-4 shadow-xl text-xs text-gray-300">
+              33 core supporters working together with you and are assisting you with your dreams n vice versa. feel free to add more. This is the social plane.
+            </div>
           </div>
         </div>
       )}
@@ -147,15 +168,25 @@ export default function SocialPane({ people }: SocialPaneProps) {
       {/* Popup - positioned outside pane, fixed to viewport */}
       {hoveredPerson && hoveredPersonData && popupPosition && (
         <div
-          className="fixed w-72 bg-black/95 backdrop-blur-sm rounded-lg p-4 border-2 border-white shadow-xl z-[60] animate-fadeIn pointer-events-auto"
+          className="fixed w-72 bg-black/95 backdrop-blur-sm rounded-lg p-4 shadow-xl z-[60] animate-fadeIn pointer-events-auto relative"
           style={{
             left: `${popupPosition.x}px`,
             top: `${popupPosition.y}px`,
             transform: 'translateY(-50%)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
           }}
           onMouseEnter={() => setHoveredPerson(hoveredPerson)}
           onMouseLeave={handleMouseLeave}
         >
+          {/* Gradient border effect */}
+          <div className="absolute inset-0 rounded-lg" style={{
+            padding: '1px',
+            background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.6), rgba(255, 255, 255, 0.4), rgba(74, 222, 128, 0.6))',
+            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+            WebkitMaskComposite: 'xor',
+            maskComposite: 'exclude',
+          }}></div>
+          <div className="relative z-10">
           <div className="flex items-start gap-3 mb-3">
             {hoveredPersonData.avatar ? (
               <img src={hoveredPersonData.avatar} alt={hoveredPersonData.name} className="w-16 h-16 rounded-full border-2 border-white" />
@@ -239,6 +270,7 @@ export default function SocialPane({ people }: SocialPaneProps) {
                 GitHub
               </a>
             )}
+          </div>
           </div>
         </div>
       )}
