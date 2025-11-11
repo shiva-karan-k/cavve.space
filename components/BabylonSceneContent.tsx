@@ -1000,8 +1000,8 @@ export default function BabylonSceneContent() {
           });
           console.log(`   ✅ Boosted ${brightLampCount} lamp meshes to intensity 15.0`);
           
-          // Use STRATEGIC lamps for balanced cave illumination (not all 36!)
-          const primaryLamps = lampMeshes.slice(0, 12); // Use 12 best-positioned lamps
+          // Use MORE lamps for better cave coverage (sweet spot between 12 and 36)
+          const primaryLamps = lampMeshes.slice(0, 20); // Use 20 lamps for good coverage
           console.log(`   🔦 Creating ${primaryLamps.length} SpotLights at strategic lamp positions...`);
           
           // Sodium vapor color - warm golden orange
@@ -1034,8 +1034,8 @@ export default function BabylonSceneContent() {
                 2, // Soft falloff
                 scene
               );
-              light.intensity = 400; // Good balance for 12 lights
-              light.range = 30; // Good coverage per light
+              light.intensity = 300; // Balanced for 20 lights (20 × 300 = 6,000 total)
+              light.range = 28; // Good coverage per light
               light.diffuse = sodiumColor;
               light.specular = sodiumSpecular;
               streetLightsCreated++;
