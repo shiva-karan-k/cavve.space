@@ -915,13 +915,24 @@ export default function BabylonSceneContent() {
           // Find the lamp meshes and create lights at their positions
           console.log('🔍🔍🔍 SEARCHING FOR LAMP MESHES TO CREATE VOLUMETRIC LIGHTS...');
           
+          // DEBUG: Log ALL mesh names to find round lamps
+          console.log('  📋 ALL MESHES (first 80):');
+          scene.meshes.slice(0, 80).forEach((m: any, idx: number) => {
+            const mat = m.material as any;
+            const hasEmissive = mat?.emissiveColor ? `[EMISSIVE: ${mat.emissiveColor.r.toFixed(2)},${mat.emissiveColor.g.toFixed(2)},${mat.emissiveColor.b.toFixed(2)}]` : '';
+            console.log(`     [${idx}] ${m.name} ${hasEmissive}`);
+          });
+          
           // Search by name first
           const lampMeshesByName = scene.meshes.filter(m => 
             m.name && (
               m.name.toLowerCase().includes('lamp') ||
               m.name.toLowerCase().includes('light') ||
               m.name.toLowerCase().includes('bulb') ||
-              m.name.toLowerCase().includes('lantern')
+              m.name.toLowerCase().includes('lantern') ||
+              m.name.toLowerCase().includes('round') ||
+              m.name.toLowerCase().includes('sphere') ||
+              m.name.toLowerCase().includes('fixture')
             )
           );
           console.log(`  📛 Found ${lampMeshesByName.length} meshes by name:`, lampMeshesByName.map(m => m.name));
