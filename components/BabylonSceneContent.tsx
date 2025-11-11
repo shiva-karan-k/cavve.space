@@ -368,7 +368,7 @@ export default function BabylonSceneContent() {
       // Tone mapping - balanced for street lights
       scene.imageProcessingConfiguration.toneMappingEnabled = true;
       scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC
-      scene.imageProcessingConfiguration.exposure = 0.75; // Lower exposure - prevent blown-out whites
+      scene.imageProcessingConfiguration.exposure = 0.90; // Balanced exposure for focused lighting
       scene.imageProcessingConfiguration.contrast = 1.0; // Neutral contrast
       
       // FXAA for smooth edges
@@ -1000,9 +1000,9 @@ export default function BabylonSceneContent() {
           });
           console.log(`   ✅ Boosted ${brightLampCount} lamp meshes to intensity 15.0`);
           
-          // Use ALL lamps for maximum cave illumination
-          const primaryLamps = lampMeshes; // USE ALL detected lamps
-          console.log(`   🔦 Creating ${primaryLamps.length} SpotLights at ALL lamp positions...`);
+          // Use STRATEGIC lamps for balanced cave illumination (not all 36!)
+          const primaryLamps = lampMeshes.slice(0, 12); // Use 12 best-positioned lamps
+          console.log(`   🔦 Creating ${primaryLamps.length} SpotLights at strategic lamp positions...`);
           
           // Sodium vapor color - warm golden orange
           const sodiumColor = new Color3(1.0, 0.7, 0.35); // Traditional street light
@@ -1034,8 +1034,8 @@ export default function BabylonSceneContent() {
                 2, // Soft falloff
                 scene
               );
-              light.intensity = 100; // MUCH LOWER - 36 lights is a lot!
-              light.range = 20; // Shorter range to reduce overlap
+              light.intensity = 400; // Good balance for 12 lights
+              light.range = 30; // Good coverage per light
               light.diffuse = sodiumColor;
               light.specular = sodiumSpecular;
               streetLightsCreated++;
