@@ -989,13 +989,6 @@ export default function BabylonSceneContent() {
           });
           console.log(`    ✅ Made ${emissiveMeshCount} yellow lamp materials emissive (intensity: 8.0)`);
           
-          // TEST: Try different light types - CHANGE THIS TO SWITCH
-          const LIGHT_TYPE: 'point' | 'spot' | 'directional' = 'spot'; // <-- Change to test different types
-          
-          console.log('🔦 STREET LIGHT TEST MODE');
-          console.log(`   Current type: ${LIGHT_TYPE.toUpperCase()}`);
-          console.log('   Change LIGHT_TYPE to: "point", "spot", or "directional" to test');
-          
           // BOOST THE LAMP MESH GLOW - make them SHINE!
           console.log('💡 Boosting lamp mesh emissive glow...');
           let brightLampCount = 0;
@@ -1024,60 +1017,32 @@ export default function BabylonSceneContent() {
           
           let streetLightsCreated = 0;
           
-          if (LIGHT_TYPE === 'point') {
-            // POINTLIGHT - omnidirectional sphere of light
-            primaryLamps.forEach((lamp: any, idx: number) => {
-              const light = new PointLight(`streetLight_${idx}`, lamp.getAbsolutePosition(), scene);
-              light.intensity = 200; // Balanced intensity
-              light.range = 30;
-              light.diffuse = sodiumColor;
-              light.specular = sodiumSpecular;
-              streetLightsCreated++;
-            });
-            console.log(`    ✅ Created ${streetLightsCreated} PointLights (intensity: 200, range: 30)`);
-            
-          } else if (LIGHT_TYPE === 'spot') {
-            // SPOTLIGHT - directional cone (like real street lamp)
-            primaryLamps.forEach((lamp: any, idx: number) => {
-              const pos = lamp.getAbsolutePosition();
-              const light = new SpotLight(
-                `streetLight_${idx}`,
-                pos,
-                new Vector3(0, -1, 0.1), // Aim mostly down, slightly forward
-                Math.PI / 2.5, // 72 degree cone (wider coverage)
-                2, // Soft falloff
-                scene
-              );
-              light.intensity = 300; // Balanced for 20 lights (20 × 300 = 6,000 total)
-              light.range = 28; // Good coverage per light
-              light.diffuse = sodiumColor;
-              light.specular = sodiumSpecular;
-              
-              // CRITICAL: Mark as custom light so light switch doesn't disable it
-              (light as any).isCustomStreetLight = true;
-              
-              streetLightsCreated++;
-              
-              const p = lamp.getAbsolutePosition();
-              console.log(`    ✅ SpotLight ${idx} at (${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)})`);
-            });
-            
-          } else if (LIGHT_TYPE === 'directional') {
-            // DIRECTIONALLIGHT - sun-like parallel rays
-            const light = new DirectionalLight(
-              'streetLight',
-              new Vector3(0, -1, 0.3),
+          // SPOTLIGHT - directional cone (like real street lamp)
+          primaryLamps.forEach((lamp: any, idx: number) => {
+            const pos = lamp.getAbsolutePosition();
+            const light = new SpotLight(
+              `streetLight_${idx}`,
+              pos,
+              new Vector3(0, -1, 0.1), // Aim mostly down, slightly forward
+              Math.PI / 2.5, // 72 degree cone (wider coverage)
+              2, // Soft falloff
               scene
             );
-            light.position = new Vector3(0, 10, -5);
-            light.intensity = 3.0;
+            light.intensity = 300; // Balanced for 20 lights (20 × 300 = 6,000 total)
+            light.range = 28; // Good coverage per light
             light.diffuse = sodiumColor;
             light.specular = sodiumSpecular;
+            
+            // CRITICAL: Mark as custom light so light switch doesn't disable it
+            (light as any).isCustomStreetLight = true;
+            
             streetLightsCreated++;
-            console.log(`    ✅ DirectionalLight (intensity: 3.0)`);
-          }
+            
+            const p = lamp.getAbsolutePosition();
+            console.log(`    ✅ SpotLight ${idx} at (${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)})`);
+          });
           
-          console.log(`  ✅ Created ${streetLightsCreated} sodium vapor street lights (type: ${LIGHT_TYPE})`);
+          console.log(`  ✅ Created ${streetLightsCreated} sodium vapor street lights (SpotLights)`);
           
           console.log('✅ GLB native lights loaded and stored as default preset');
           console.log('🖼️ Textures:', scene.textures.length);
