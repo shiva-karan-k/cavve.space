@@ -464,16 +464,7 @@ export default function UIOverlay() {
             animation: 'slideInRight 0.3s ease-out'
           }}
         >
-          <VibesPanel
-            useWebGPU={useWebGPU}
-            setUseWebGPU={setUseWebGPU}
-            vibe={currentVibe}
-            setVibe={setVibe}
-            listLights={(window as any).__babylonListLights}
-            selectLight={(window as any).__babylonSelectLight}
-            setGizmosEnabled={(window as any).__babylonSetGizmosEnabled}
-            setGizmoMode={(window as any).__babylonSetGizmoMode}
-          />
+          <VibesPanel />
         </div>
       )}
     </div>
