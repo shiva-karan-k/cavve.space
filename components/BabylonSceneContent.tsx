@@ -985,35 +985,48 @@ export default function BabylonSceneContent() {
           const lampMeshes = emissiveMeshes.length >= 2 ? emissiveMeshes : lampMeshesByName;
           console.log(`  ✅ Using ${lampMeshes.length} lamp meshes for light creation`);
           
-          // CREATE actual PointLights at yellow lamp positions for volumetric lighting
-          console.log('  💡 Creating PointLights at yellow lamp positions...');
-          let lightsCreated = 0;
-          lampMeshes.slice(0, 8).forEach((lampMesh: any) => { // Limit to 8 lights for performance
-            if (lampMesh.material) {
-              const materials = Array.isArray(lampMesh.material) ? lampMesh.material : [lampMesh.material];
-              materials.forEach((mat: any) => {
-                if (mat.emissiveColor || mat.emissiveTexture) {
-                  // Boost emissive for glow effect
-                  mat.emissiveIntensity = 15.0;
-                  mat.markAsDirty();
-                }
-              });
-              
-              // Create PointLight at lamp position
-              const lampLight = new PointLight(
-                `lampLight_${lampMesh.name}`,
-                lampMesh.getAbsolutePosition(), // Use lamp's actual position
-                scene
-              );
-              lampLight.intensity = 50; // Moderate intensity (not flooding)
-              lampLight.range = 15; // Light reaches 15 units
-              lampLight.diffuse = new Color3(1.0, 0.8, 0.4); // Warm yellow
-              lampLight.specular = new Color3(0.5, 0.4, 0.2); // Subtle specular
-              lightsCreated++;
-              console.log(`    ✅ Created PointLight at ${lampMesh.name}: pos (${lampMesh.getAbsolutePosition().x.toFixed(1)}, ${lampMesh.getAbsolutePosition().y.toFixed(1)}, ${lampMesh.getAbsolutePosition().z.toFixed(1)})`);
-            }
+          // Create ONLY 2 yellow PointLights: one at left entry, one above car
+          console.log('  💡 Creating ONLY 2 yellow PointLights (left entry + above car)...');
+          
+          // Log all lamp positions to find the right ones
+          console.log('  📍 All lamp positions:');
+          lampMeshes.forEach((lampMesh: any, idx: number) => {
+            const pos = lampMesh.getAbsolutePosition();
+            console.log(`    [${idx}] ${lampMesh.name}: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`);
           });
-          console.log(`  ✅ Created ${lightsCreated} volumetric yellow PointLights`);
+          
+          // Find lamp near left entry (negative X, elevated Y)
+          const leftEntryLamp = lampMeshes.find((lamp: any) => {
+            const pos = lamp.getAbsolutePosition();
+            return pos.x < -3 && pos.y > 2; // Left side, elevated
+          });
+          
+          // Find lamp above car (near center, high Y)
+          const carLamp = lampMeshes.find((lamp: any) => {
+            const pos = lamp.getAbsolutePosition();
+            return Math.abs(pos.x) < 3 && Math.abs(pos.z) < 3 && pos.y > 3; // Center, high up
+          });
+          
+          let lightsCreated = 0;
+          if (leftEntryLamp) {
+            const light = new PointLight('leftEntryLight', leftEntryLamp.getAbsolutePosition(), scene);
+            light.intensity = 80;
+            light.range = 20;
+            light.diffuse = new Color3(1.0, 0.8, 0.4); // Warm yellow
+            lightsCreated++;
+            console.log(`    ✅ Created LEFT ENTRY light at ${leftEntryLamp.name}`);
+          }
+          
+          if (carLamp) {
+            const light = new PointLight('carLight', carLamp.getAbsolutePosition(), scene);
+            light.intensity = 80;
+            light.range = 20;
+            light.diffuse = new Color3(1.0, 0.8, 0.4); // Warm yellow
+            lightsCreated++;
+            console.log(`    ✅ Created CAR light at ${carLamp.name}`);
+          }
+          
+          console.log(`  ✅ Created ONLY ${lightsCreated} yellow PointLights (not 8!)`);
           
           console.log('✅ GLB native lights loaded and stored as default preset');
           console.log('🖼️ Textures:', scene.textures.length);
