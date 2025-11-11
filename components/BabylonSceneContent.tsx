@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { Engine, Scene, HemisphericLight, DirectionalLight, PointLight, SpotLight, Vector3, FreeCamera, ArcRotateCamera, ShadowGenerator, PBRMaterial, StandardMaterial, Color3, Color4, MeshBuilder, Tools, AbstractMesh, Light, GizmoManager, DefaultRenderingPipeline, CubeTexture, KeyboardEventTypes, WebGPUEngine } from '@babylonjs/core';
 import { SceneLoader } from '@babylonjs/core/Loading/sceneLoader';
+import { DracoCompression } from '@babylonjs/core/Meshes/Compression/dracoCompression';
 import { AdvancedDynamicTexture, Rectangle } from '@babylonjs/gui';
 import '@babylonjs/loaders/glTF';
 import '@babylonjs/loaders/OBJ';
@@ -956,10 +957,21 @@ export default function BabylonSceneContent() {
       console.log('✅ Vibes system subscription initialized');
       
       console.log('📦 Loading batcave model...');
+      // Enable Draco compression support for compressed GLB
+      DracoCompression.Configuration = {
+        decoder: {
+          wasmUrl: '/draco/draco_decoder_gltf.wasm',
+          wasmBinaryUrl: '/draco/draco_decoder_gltf.wasm',
+          fallbackUrl: '/draco/draco_decoder_gltf.wasm',
+        }
+      };
+      console.log('✅ Draco decoder configured for compressed GLB');
+      
       // Use AppendAsync to load FULL scene including environment textures and backgrounds
       // Add cache busting for production deployments
       const glbPath = '/the_batcave.glb?v=' + Date.now();
       console.log(`📂 Loading GLB from: ${glbPath}`);
+      console.log('📦 GLB is Draco-compressed (47.49 MB, was 121 MB)');
       
       SceneLoader.AppendAsync('/', 'the_batcave.glb?v=' + Date.now(), scene)
         .then(() => {
