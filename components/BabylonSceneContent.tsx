@@ -365,10 +365,10 @@ export default function BabylonSceneContent() {
       scene.imageProcessingConfiguration.vignetteWeight = 0.25; // More dramatic
       scene.imageProcessingConfiguration.vignetteCameraFov = 1.5; // Wider falloff
       
-      // Tone mapping - darker for street light contrast
+      // Tone mapping - balanced for street lights
       scene.imageProcessingConfiguration.toneMappingEnabled = true;
       scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC
-      scene.imageProcessingConfiguration.exposure = 0.6; // Dark so street lights stand out
+      scene.imageProcessingConfiguration.exposure = 0.85; // Brighter - let lights be visible
       scene.imageProcessingConfiguration.contrast = 1.0; // Neutral contrast
       
       // FXAA for smooth edges
@@ -637,7 +637,7 @@ export default function BabylonSceneContent() {
           console.log('⚠️ GLB has 0 lights - adding fallback HemisphericLight');
           
           // Fallback ambient light (ONLINE mode - with street lights)
-          const baseAmbient = 2.0; // Moderate - street lights do most of the work
+          const baseAmbient = 2.8; // Higher baseline so street lights enhance, not create all light
           const ambientLight = new HemisphericLight('fallbackAmbient', new Vector3(0, 1, 0), scene);
           ambientLight.intensity = baseAmbient * currentSceneLighting;
           ambientLight.diffuse = new Color3(0.88, 0.85, 0.80); // Neutral warm
@@ -954,7 +954,7 @@ export default function BabylonSceneContent() {
               const materials = Array.isArray(lampMesh.material) ? lampMesh.material : [lampMesh.material];
               materials.forEach((mat: any) => {
                 if (mat.emissiveColor || mat.emissiveTexture) {
-                  mat.emissiveIntensity = 6.0; // Lower - lamp mesh just glows, PointLights do the work
+                  mat.emissiveIntensity = 8.0; // Brighter mesh glow to match stronger lights
                   mat.disableLighting = true; // Meshes emit light, not receive
                   mat.markAsDirty();
                   emissiveMeshCount++;
@@ -962,9 +962,15 @@ export default function BabylonSceneContent() {
               });
             }
           });
-          console.log(`    ✅ Made ${emissiveMeshCount} yellow lamp materials emissive (intensity: 6.0)`);
+          console.log(`    ✅ Made ${emissiveMeshCount} yellow lamp materials emissive (intensity: 8.0)`);
           
-          // Create ACTUAL PointLights at yellow lamp positions (Indian street light vibe)
+          // TEST: Try different light types - CHANGE THIS TO SWITCH
+          const LIGHT_TYPE: 'point' | 'spot' | 'directional' = 'spot'; // <-- Change to test different types
+          
+          console.log('🔦 STREET LIGHT TEST MODE');
+          console.log(`   Current type: ${LIGHT_TYPE.toUpperCase()}`);
+          console.log('   Change LIGHT_TYPE to: "point", "spot", or "directional" to test');
+          
           // Find 2 lamps: left entry + above car
           const leftEntryLamp = lampMeshes.find((lamp: any) => {
             const pos = lamp.getAbsolutePosition();
@@ -976,28 +982,86 @@ export default function BabylonSceneContent() {
             return Math.abs(pos.x) < 3 && Math.abs(pos.z) < 3 && pos.y > 3; // Center, high up
           });
           
+          // Sodium vapor color - warm golden orange
+          const sodiumColor = new Color3(1.0, 0.7, 0.35); // More orange
+          const sodiumSpecular = new Color3(0.7, 0.5, 0.25);
+          
           let streetLightsCreated = 0;
-          if (leftEntryLamp) {
-            const streetLight = new PointLight('leftStreetLight', leftEntryLamp.getAbsolutePosition(), scene);
-            streetLight.intensity = 200; // MUCH stronger - actually illuminate the path
-            streetLight.range = 30; // Wide coverage
-            streetLight.diffuse = new Color3(1.0, 0.75, 0.4); // Traditional Indian sodium vapor yellow-orange
-            streetLight.specular = new Color3(0.6, 0.45, 0.2); // Brighter specular for glossy surfaces
+          
+          if (LIGHT_TYPE === 'point') {
+            // POINTLIGHT - omnidirectional sphere of light
+            if (leftEntryLamp) {
+              const light = new PointLight('leftStreetLight', leftEntryLamp.getAbsolutePosition(), scene);
+              light.intensity = 300; // Much higher
+              light.range = 35;
+              light.diffuse = sodiumColor;
+              light.specular = sodiumSpecular;
+              streetLightsCreated++;
+              console.log(`    ✅ LEFT PointLight (intensity: 300, range: 35)`);
+            }
+            if (carLamp) {
+              const light = new PointLight('carStreetLight', carLamp.getAbsolutePosition(), scene);
+              light.intensity = 300;
+              light.range = 35;
+              light.diffuse = sodiumColor;
+              light.specular = sodiumSpecular;
+              streetLightsCreated++;
+              console.log(`    ✅ CAR PointLight (intensity: 300, range: 35)`);
+            }
+            
+          } else if (LIGHT_TYPE === 'spot') {
+            // SPOTLIGHT - directional cone (like real street lamp)
+            if (leftEntryLamp) {
+              const pos = leftEntryLamp.getAbsolutePosition();
+              const light = new SpotLight(
+                'leftStreetLight',
+                pos,
+                new Vector3(0, -1, 0.2), // Aim downward and slightly forward
+                Math.PI / 3, // 60 degree cone
+                2, // Soft falloff
+                scene
+              );
+              light.intensity = 800; // SpotLights need higher intensity
+              light.range = 40;
+              light.diffuse = sodiumColor;
+              light.specular = sodiumSpecular;
+              streetLightsCreated++;
+              console.log(`    ✅ LEFT SpotLight (intensity: 800, angle: 60°, aimed down+forward)`);
+            }
+            if (carLamp) {
+              const pos = carLamp.getAbsolutePosition();
+              const light = new SpotLight(
+                'carStreetLight',
+                pos,
+                new Vector3(0, -1, 0), // Aim straight down at car
+                Math.PI / 3,
+                2,
+                scene
+              );
+              light.intensity = 800;
+              light.range = 40;
+              light.diffuse = sodiumColor;
+              light.specular = sodiumSpecular;
+              streetLightsCreated++;
+              console.log(`    ✅ CAR SpotLight (intensity: 800, angle: 60°, aimed down)`);
+            }
+            
+          } else if (LIGHT_TYPE === 'directional') {
+            // DIRECTIONALLIGHT - sun-like parallel rays
+            const light = new DirectionalLight(
+              'streetLight',
+              new Vector3(0, -1, 0.3),
+              scene
+            );
+            light.position = new Vector3(0, 10, -5);
+            light.intensity = 3.0;
+            light.diffuse = sodiumColor;
+            light.specular = sodiumSpecular;
             streetLightsCreated++;
-            console.log(`    ✅ Created LEFT street light (Indian yellow) - illuminates path`);
+            console.log(`    ✅ DirectionalLight (intensity: 3.0)`);
           }
           
-          if (carLamp) {
-            const streetLight = new PointLight('carStreetLight', carLamp.getAbsolutePosition(), scene);
-            streetLight.intensity = 200; // MUCH stronger - actually illuminate the car
-            streetLight.range = 30; // Wide coverage
-            streetLight.diffuse = new Color3(1.0, 0.75, 0.4); // Traditional Indian sodium vapor yellow-orange
-            streetLight.specular = new Color3(0.6, 0.45, 0.2); // Brighter specular for glossy surfaces
-            streetLightsCreated++;
-            console.log(`    ✅ Created CAR street light (Indian yellow) - illuminates car`);
-          }
-          
-          console.log(`  ✅ Created ${streetLightsCreated} traditional Indian yellow street lights`);
+          console.log(`  ✅ Created ${streetLightsCreated} sodium vapor street lights (type: ${LIGHT_TYPE})`);
           
           console.log('✅ GLB native lights loaded and stored as default preset');
           console.log('🖼️ Textures:', scene.textures.length);
