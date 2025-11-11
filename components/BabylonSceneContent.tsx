@@ -818,16 +818,9 @@ export default function BabylonSceneContent() {
       (window as any).__babylonSceneRef = sceneRef;
       console.log('✅ Lights refs exposed to window (initial)');
       
-      // Initial lighting setup
-      setupLighting(currentPreset, lightsEnabled);
-      
-      // Re-expose refs after initial lighting setup to ensure they're populated
-      (window as any).__babylonLightsRef = lightsRef;
-      (window as any).__babylonBaseIntensitiesRef = baseIntensitiesRef;
-      console.log('✅ Lights refs re-exposed after initial setup:', {
-        lightsCount: Object.keys(lightsRef.current).length,
-        baseIntensitiesCount: Object.keys(baseIntensitiesRef.current).length
-      });
+      // DON'T call setupLighting here - wait for GLB to load first!
+      // The GLB file contains its own lights that we should use
+      console.log('⏳ Skipping initial lighting setup - waiting for GLB lights to load...');
       
       // Subscribe to lighting changes - use direct subscription without selector
       let previousState = { 
@@ -1142,8 +1135,23 @@ export default function BabylonSceneContent() {
           // If GLB has lights, we've already mapped them above
           if (totalGLBLights > 0) {
             console.log(`✅ GLB contains ${totalGLBLights} lights - using native GLB lights`);
+            
+            // NOW that GLB lights are loaded and mapped, apply lighting state
+            console.log('🎬 Calling setupLighting NOW that GLB lights are ready...');
+            setupLighting(useLightingStore.getState().currentPreset, useLightingStore.getState().lightsEnabled);
+            
+            // Re-expose refs after GLB lights are mapped
+            (window as any).__babylonLightsRef = lightsRef;
+            (window as any).__babylonBaseIntensitiesRef = baseIntensitiesRef;
+            console.log('✅ Lights refs updated after GLB load:', {
+              lightsCount: Object.keys(lightsRef.current).length,
+              baseIntensitiesCount: Object.keys(baseIntensitiesRef.current).length
+            });
           } else {
             console.log('⚠️ GLB has no lights - creating custom lighting...');
+            
+            // Fallback: Create custom lights if GLB truly has none
+            setupLighting(useLightingStore.getState().currentPreset, useLightingStore.getState().lightsEnabled);
             
             // Fallback: Create custom lights if GLB has none
             scene.lights.forEach((light, idx) => {
