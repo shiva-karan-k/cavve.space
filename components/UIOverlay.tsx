@@ -432,21 +432,38 @@ export default function UIOverlay() {
 
       {/* Config Panel as Bottom Bar - only when open */}
       {showConfig && (
-        <div data-config-panel className="absolute bottom-0 left-64 right-80 pointer-events-auto z-50">
+        <div 
+          data-config-panel 
+          className="absolute bottom-0 left-64 right-80 pointer-events-auto z-50 transition-all duration-300 transform translate-y-0"
+          style={{ animation: 'slideUp 0.3s ease-out' }}
+        >
           <ConfigPanel onClose={() => setShowConfig(false)} />
         </div>
       )}
       
       {/* Controls Panel - positioned near controls button */}
       {showControls && (
-        <div data-controls-panel className="absolute bottom-24 right-4 pointer-events-auto z-50">
+        <div 
+          data-controls-panel 
+          className="absolute bottom-24 right-4 pointer-events-auto z-50 transition-all duration-300 transform translate-x-0"
+          style={{ animation: 'slideInRight 0.3s ease-out' }}
+        >
           <ControlsPanel onClose={() => setShowControls(false)} />
         </div>
       )}
       
       {/* Vibes Panel (includes all lighting & rendering controls) */}
       {showVibes && (
-        <div data-vibes-panel className="pointer-events-auto z-50">
+        <div 
+          data-vibes-panel 
+          className="pointer-events-auto z-50 transition-all duration-300 transform translate-x-0"
+          style={{ 
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            animation: 'slideInRight 0.3s ease-out'
+          }}
+        >
           <VibesPanel
             useWebGPU={useWebGPU}
             setUseWebGPU={setUseWebGPU}

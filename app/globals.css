@@ -74,3 +74,27 @@ body {
   animation: fadeInOut 15s ease-in-out infinite;
 }
 
+/* Slide up animation for Config Panel */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide in from right animation for Controls and Vibes Panels */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
