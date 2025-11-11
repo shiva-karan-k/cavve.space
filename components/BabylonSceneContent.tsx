@@ -998,9 +998,9 @@ export default function BabylonSceneContent() {
               vibeQueue = null;
               isApplyingVibe = true;
               applyVibe(sceneRef.current, queuedVibe);
-              setTimeout(() => { isApplyingVibe = false; }, 300);
+              setTimeout(() => { isApplyingVibe = false; }, 500);
             }
-          }, 300);
+          }, 500);
         } else {
           console.warn('⚠️ Scene not ready, vibe will apply after load');
         }

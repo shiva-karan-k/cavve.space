@@ -12,15 +12,15 @@ export type Vibe = {
 };
 
 export const PRESETS: Record<string, Vibe> = {
-  // Default mode - Bright T-Rex showcase view
+  // Default mode - Bright T-Rex showcase view with warmer yellow lights
   default: {
     env: "",
     envIntensity: 0.45,
     exposure: 1.15,
     bloom: { enabled: true, threshold: 1.05, weight: 0.14 },
     fog: { enabled: true, density: 0.004 },
-    key: { intensity: 1400, angle: 35, kelvin: 4200 },
-    rim: { intensity: 950, angle: 28, kelvin: 7500 },
+    key: { intensity: 1600, angle: 35, kelvin: 2800 },  // Increased intensity, warmer yellow
+    rim: { intensity: 1050, angle: 28, kelvin: 2600 },  // Warmer yellow accent
     emissiveIntensity: 5.5,
   },
   
@@ -120,50 +120,8 @@ export const PRESETS: Record<string, Vibe> = {
     emissiveIntensity: 3.2,
   },
   
-  // 🎮 Performance Presets (PUBG-style)
-  smooth: {
-    env: "",
-    envIntensity: 0.10,
-    exposure: 0.95,
-    bloom: { enabled: false, threshold: 1.5, weight: 0.05 },
-    fog: { enabled: false, density: 0.001 },
-    key: { intensity: 500, angle: 40, kelvin: 3000 },
-    rim: { intensity: 300, angle: 30, kelvin: 7000 },
-    emissiveIntensity: 3.0,
-  },
-  
-  balanced: {
-    env: "",
-    envIntensity: 0.15,
-    exposure: 1.0,
-    bloom: { enabled: true, threshold: 1.10, weight: 0.10 },
-    fog: { enabled: true, density: 0.0035 },
-    key: { intensity: 700, angle: 32, kelvin: 3000 },
-    rim: { intensity: 500, angle: 25, kelvin: 8000 },
-    emissiveIntensity: 4.5,
-  },
-  
-  hd: {
-    env: "",
-    envIntensity: 0.20,
-    exposure: 1.0,
-    bloom: { enabled: true, threshold: 1.05, weight: 0.15 },
-    fog: { enabled: true, density: 0.0050 },
-    key: { intensity: 900, angle: 30, kelvin: 3200 },
-    rim: { intensity: 650, angle: 22, kelvin: 8500 },
-    emissiveIntensity: 5.5,
-  },
-  
-  ultra_hd: {
-    env: "",
-    envIntensity: 0.25,
-    exposure: 1.05,
-    bloom: { enabled: true, threshold: 0.95, weight: 0.18 },
-    fog: { enabled: true, density: 0.0060 },
-    key: { intensity: 1100, angle: 28, kelvin: 3500 },
-    rim: { intensity: 850, angle: 20, kelvin: 9000 },
-    emissiveIntensity: 6.5,
-  },
+  // Note: Quality presets (smooth/balanced/HD/Ultra HD) moved to separate quality system
+  // See types/quality.ts and store/qualityStore.ts for graphics quality settings
   
   // 🦖 T-Rex Cinematic - Frontal elevated view (spawn point angle) - Bright showcase lighting
   "T-Rex_cinematic": {
