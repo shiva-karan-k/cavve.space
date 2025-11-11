@@ -679,9 +679,34 @@ export default function BabylonSceneContent() {
           const baseAmbient = preset === 'dramatic' ? currentAmbient * 0.5 : currentAmbient;
           const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 100, 0), scene);
           ambientLight.intensity = baseAmbient * currentSceneLighting;
-      ambientLight.diffuse = new Color3(1, 1, 1);
+          ambientLight.diffuse = new Color3(1, 1, 1);
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
+          
+          // ADDITIONAL VOLUMETRIC YELLOW SPOTLIGHTS (Points 1 & 4 from reference)
+          // Yellow Spotlight #1: Left platform area (Point 1)
+          const yellowSpot1 = new SpotLight('yellowSpot1',
+            new Vector3(-6, 4, -2), // Left side, elevated
+            new Vector3(0.3, -1, 0.2), // Angled down and inward
+            Tools.ToRadians(25), // Focused cone
+            0.08, // Sharp falloff for visible volumetric beam
+            scene);
+          yellowSpot1.diffuse = new Color3(1.0, 0.65, 0.1); // Bright warm yellow-orange
+          yellowSpot1.intensity = 800 * currentSceneLighting;
+          yellowSpot1.range = 40;
+          yellowSpot1.shadowEnabled = false;
+          
+          // Yellow Spotlight #2: Right side near Batmobile (Point 4)
+          const yellowSpot2 = new SpotLight('yellowSpot2',
+            new Vector3(6, 4, 1), // Right side, elevated
+            new Vector3(-0.3, -1, -0.1), // Angled down and inward
+            Tools.ToRadians(25), // Focused cone
+            0.08, // Sharp falloff for visible volumetric beam
+            scene);
+          yellowSpot2.diffuse = new Color3(1.0, 0.65, 0.1); // Bright warm yellow-orange
+          yellowSpot2.intensity = 800 * currentSceneLighting;
+          yellowSpot2.range = 40;
+          yellowSpot2.shadowEnabled = false;
           
         } else if (preset === 'bright') {
           // Bright, even lighting
