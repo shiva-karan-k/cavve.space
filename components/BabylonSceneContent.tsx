@@ -569,38 +569,58 @@ export default function BabylonSceneContent() {
           } else {
             // Light mode: enable all GLB lights and restore base intensities
             console.log('💡 Light mode: Enabling all GLB lights and restoring base intensities');
+            
+            // CRITICAL: Save base intensities if not already saved
+            scene.lights.forEach((light: any) => {
+              const lightKey = Object.keys(lightsRef.current).find(key => 
+                lightsRef.current[key as keyof typeof lightsRef.current] === light
+              );
+              
+              // If no base intensity saved and light has intensity, save it now
+              if (lightKey && 
+                  baseIntensitiesRef.current[lightKey as keyof typeof baseIntensitiesRef.current] === undefined &&
+                  light.intensity > 0) {
+                (baseIntensitiesRef.current as any)[lightKey] = light.intensity;
+                console.log(`  💾 Saved base intensity for ${light.name}: ${light.intensity.toFixed(2)}`);
+              }
+            });
+            
+            // Now restore lights
             scene.lights.forEach((light: any) => {
               light.setEnabled(true);
               console.log(`  🔦 Restoring light: ${light.name || 'unnamed'}`);
               
-              // Find this light in our refs and restore its base intensity
+              // Find this light in our refs
               const lightKey = Object.keys(lightsRef.current).find(key => 
                 lightsRef.current[key as keyof typeof lightsRef.current] === light
               );
               
               if (lightKey && baseIntensitiesRef.current[lightKey as keyof typeof baseIntensitiesRef.current] !== undefined) {
-                // Restore from saved base intensity
+                // Restore from saved base intensity (ALWAYS use this if available)
                 const baseIntensity = baseIntensitiesRef.current[lightKey as keyof typeof baseIntensitiesRef.current] as number;
                 light.intensity = baseIntensity * currentSceneLighting;
                 console.log(`    ✅ Restored from base: ${baseIntensity.toFixed(2)} × ${currentSceneLighting.toFixed(2)} = ${light.intensity.toFixed(2)}`);
-              } else if (light.intensity !== undefined && light.intensity > 0) {
-                // Light already has intensity, just apply scene multiplier
-                const currentIntensity = light.intensity;
-                light.intensity = currentIntensity * currentSceneLighting;
-                console.log(`    ⚠️ No base found, using current: ${currentIntensity.toFixed(2)} × ${currentSceneLighting.toFixed(2)} = ${light.intensity.toFixed(2)}`);
               } else {
-                // Light has zero intensity, try to restore from GLB defaults
-                // This shouldn't happen if we properly saved base intensities
-                console.warn(`    ❌ Light ${light.name} has no base intensity and current is 0!`);
-                // Set a reasonable default based on light type
-                if (light.constructor.name === 'HemisphericLight') {
-                  light.intensity = 0.5 * currentSceneLighting;
+                // NO base intensity saved - use strong defaults based on light type
+                console.warn(`    ⚠️ No base intensity for ${light.name}, using defaults`);
+                let defaultIntensity = 1.0; // Default fallback
+                
+                if (light.constructor.name === 'SpotLight') {
+                  defaultIntensity = 500; // Strong spotlight
                 } else if (light.constructor.name === 'DirectionalLight') {
-                  light.intensity = 1.0 * currentSceneLighting;
-                } else {
-                  light.intensity = 1.0 * currentSceneLighting;
+                  defaultIntensity = 1.0; // Directional
+                } else if (light.constructor.name === 'HemisphericLight') {
+                  defaultIntensity = 0.5; // Ambient fill
+                } else if (light.constructor.name === 'PointLight') {
+                  defaultIntensity = 100; // Point light
                 }
-                console.log(`    🔧 Applied default intensity: ${light.intensity.toFixed(2)}`);
+                
+                light.intensity = defaultIntensity * currentSceneLighting;
+                // Save this as base for next time
+                if (lightKey) {
+                  (baseIntensitiesRef.current as any)[lightKey] = defaultIntensity;
+                }
+                console.log(`    🔧 Applied default: ${defaultIntensity} × ${currentSceneLighting.toFixed(2)} = ${light.intensity.toFixed(2)}`);
               }
             });
             
@@ -995,11 +1015,12 @@ export default function BabylonSceneContent() {
       const glbUrl = isProduction
         ? 'https://dkpyy8zashbhkgoe.public.blob.vercel-storage.com/the_batcave.glb'
         : '/the_batcave.glb';
-      
+
       console.log(`📂 Loading GLB from: ${glbUrl}`);
       console.log(`📦 Environment: ${isProduction ? 'PRODUCTION (Vercel Blob - CORS enabled)' : 'LOCAL'}`);
-      console.log('📦 File size: 121 MB uncompressed');
-      console.log('⏳ This may take 10-15 seconds to load...');
+      console.log('📦 File size: 47.49 MB Draco-compressed');
+      console.log('🔧 Using Draco decompression for faster loading');
+      console.log('⏳ This should load in 3-5 seconds...');
       
       SceneLoader.AppendAsync(isProduction ? glbUrl : '/', isProduction ? '' : 'the_batcave.glb', scene, (event) => {
         if (event.lengthComputable) {
