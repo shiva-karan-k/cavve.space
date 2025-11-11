@@ -957,24 +957,29 @@ export default function BabylonSceneContent() {
       console.log('✅ Vibes system subscription initialized');
       
       console.log('📦 Loading batcave model...');
-      // Enable Draco compression support for compressed GLB
-      // Babylon.js needs the JS wrapper, not direct WASM
-      DracoCompression.Configuration = {
-        decoder: {
-          wasmUrl: '/draco/draco_wasm_wrapper_gltf.js',
-          wasmBinaryUrl: '/draco/draco_decoder_gltf.wasm',
-          fallbackUrl: '/draco/draco_decoder_gltf.js',
-        }
+      
+      // SIMPLER DRACO CONFIG: Just point to the decoder files
+      // Babylon will handle the rest
+      console.log('🔧 Configuring Draco decoder...');
+      DracoCompression.Configuration.decoder = {
+        wasmUrl: '/draco/draco_decoder_gltf.js',
+        wasmBinaryUrl: '/draco/draco_decoder_gltf.wasm',
+        fallbackUrl: '/draco/draco_decoder_gltf.js',
       };
-      console.log('✅ Draco decoder configured (JS wrapper + WASM binary)');
+      console.log('✅ Draco decoder configured');
       
       // Use AppendAsync to load FULL scene including environment textures and backgrounds
-      // Add cache busting for production deployments
       const glbPath = '/the_batcave.glb?v=' + Date.now();
       console.log(`📂 Loading GLB from: ${glbPath}`);
-      console.log('📦 GLB is Draco-compressed (47.49 MB, was 121 MB)');
+      console.log('📦 GLB is Draco-compressed (47.49 MB)');
+      console.log('⏳ This may take 5-10 seconds to decompress...');
       
-      SceneLoader.AppendAsync('/', 'the_batcave.glb?v=' + Date.now(), scene)
+      SceneLoader.AppendAsync('/', 'the_batcave.glb?v=' + Date.now(), scene, (event) => {
+        if (event.lengthComputable) {
+          const progress = (event.loaded / event.total * 100).toFixed(1);
+          console.log(`📥 Loading progress: ${progress}%`);
+        }
+      })
         .then(() => {
           console.log('✅ Batcave scene loaded!');
           
