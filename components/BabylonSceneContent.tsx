@@ -949,7 +949,11 @@ export default function BabylonSceneContent() {
       
       console.log('📦 Loading batcave model...');
       // Use AppendAsync to load FULL scene including environment textures and backgrounds
-      SceneLoader.AppendAsync('/', 'the_batcave.glb', scene)
+      // Add cache busting for production deployments
+      const glbPath = '/the_batcave.glb?v=' + Date.now();
+      console.log(`📂 Loading GLB from: ${glbPath}`);
+      
+      SceneLoader.AppendAsync('/', 'the_batcave.glb?v=' + Date.now(), scene)
         .then(() => {
           console.log('✅ Batcave scene loaded!');
           
@@ -2161,8 +2165,23 @@ export default function BabylonSceneContent() {
         })
         .catch((error) => {
           console.error('❌ Failed to load batcave:', error);
+          console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+          });
           console.log('💡 Make sure the_batcave.glb is in the /public folder');
-          // Keep scene visible even on error
+          console.log('💡 Check browser Network tab for 404 errors');
+          // Keep scene visible even on error - show error message
+          const errorDiv = document.createElement('div');
+          errorDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: red; padding: 20px; border: 2px solid red; z-index: 10000; font-family: monospace;';
+          errorDiv.innerHTML = `
+            <h2>❌ Failed to load 3D scene</h2>
+            <p>Error: ${error.message || 'Unknown error'}</p>
+            <p>Check console for details</p>
+            <p>GLB Path: /the_batcave.glb</p>
+          `;
+          document.body.appendChild(errorDiv);
         });
 
       // Keyboard controls - attach to canvas and window for maximum coverage
@@ -2367,12 +2386,15 @@ export default function BabylonSceneContent() {
       // Store observer for cleanup
       (window as any).__movementObserver = movementObserver;
 
-      // Start render loop
+      // Start render loop IMMEDIATELY - don't wait for GLB to load
+      // This ensures the scene is visible even if GLB fails
       console.log('🎬 Starting render loop...');
       engine.runRenderLoop(() => {
-        scene.render();
+        if (scene) {
+          scene.render();
+        }
       });
-      console.log('✅ Render loop started!');
+      console.log('✅ Render loop started! Scene will render even if GLB fails to load.');
 
       // Handle resize
       const handleResize = () => {
