@@ -635,16 +635,16 @@ export default function BabylonSceneContent() {
         // Just enough ambient to make things visible, GLB emissives do the rest
         
         if (preset === 'default' || preset === 'dramatic') {
-          // BRIGHT ambient fill for even lighting across the scene
-          const baseAmbient = 3.0; // Much brighter for visibility
+          // BRIGHT, WARM ambient fill to match reference image
+          const baseAmbient = 5.0; // Very bright for even visibility
           const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), scene);
           ambientLight.intensity = baseAmbient;
-          ambientLight.diffuse = new Color3(1.0, 1.0, 1.0); // Pure white for maximum brightness
-          ambientLight.groundColor = new Color3(0.2, 0.2, 0.2); // Slight ground fill
+          ambientLight.diffuse = new Color3(1.0, 0.95, 0.85); // Warm white (slight yellow tint)
+          ambientLight.groundColor = new Color3(0.3, 0.25, 0.2); // Warm ground fill
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
           
-          console.log(`✅ Bright ambient lighting applied (${baseAmbient}) - matching reference brightness`);
+          console.log(`✅ Bright WARM ambient lighting applied (${baseAmbient}) - matching reference brightness`);
           
         } else if (preset === 'bright') {
           // Bright, even lighting
@@ -1417,10 +1417,10 @@ export default function BabylonSceneContent() {
               avatarHead.position.y = 1.0;
               avatarHead.parent = avatarBody;
               
-              // Create avatar material
+              // Create avatar material - neutral grey (not blue!)
               const avatarMaterial = new StandardMaterial('avatarMat', scene);
-              avatarMaterial.diffuseColor = new Color3(0.2, 0.4, 0.8); // Blue-ish
-              avatarMaterial.specularColor = new Color3(0.5, 0.5, 0.5);
+              avatarMaterial.diffuseColor = new Color3(0.3, 0.3, 0.3); // Neutral grey
+              avatarMaterial.specularColor = new Color3(0.2, 0.2, 0.2);
               avatarBody.material = avatarMaterial;
               avatarHead.material = avatarMaterial;
               
@@ -1481,7 +1481,7 @@ export default function BabylonSceneContent() {
             avatarHead.position.y = 1.0;
             avatarHead.parent = avatarBody;
             const avatarMaterial = new StandardMaterial('avatarMat', scene);
-            avatarMaterial.diffuseColor = new Color3(0.2, 0.4, 0.8);
+            avatarMaterial.diffuseColor = new Color3(0.3, 0.3, 0.3); // Neutral grey
             avatarBody.material = avatarMaterial;
             avatarHead.material = avatarMaterial;
             avatarBody.position = new Vector3(0, 0.9, 0);
