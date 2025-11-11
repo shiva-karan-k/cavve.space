@@ -363,21 +363,32 @@ export default function BabylonSceneContent() {
       const pipeline = new DefaultRenderingPipeline('drp', true, scene, [camera]);
       pipelineRef.current = pipeline;
       
-      // GPU-accelerated bloom settings
+      // GPU-accelerated bloom settings (ENHANCED for visible light glow)
       pipeline.bloomEnabled = true;
-      pipeline.bloomThreshold = 1.1;
-      pipeline.bloomWeight = 0.12;
-      pipeline.bloomKernel = 64; // GPU-optimized kernel size
-      pipeline.bloomScale = 0.5; // Half resolution for better GPU performance
+      pipeline.bloomThreshold = 0.9; // Lower threshold for more bloom
+      pipeline.bloomWeight = 0.22; // Increased for light beam glow
+      pipeline.bloomKernel = 128; // Larger kernel for softer bloom
+      pipeline.bloomScale = 0.75; // Better quality bloom
       
       // GPU-accelerated vignette
       scene.imageProcessingConfiguration.vignetteEnabled = true;
-      scene.imageProcessingConfiguration.vignetteWeight = 0.2;
+      scene.imageProcessingConfiguration.vignetteWeight = 0.25; // More dramatic
+      scene.imageProcessingConfiguration.vignetteBlend = 1.0; // Full blend
+      scene.imageProcessingConfiguration.vignetteCameraFov = 1.5; // Wider falloff
+      
+      // Enhanced tone mapping for better contrast
+      scene.imageProcessingConfiguration.toneMappingEnabled = true;
+      scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC
+      scene.imageProcessingConfiguration.exposure = 1.2; // Brighter
+      scene.imageProcessingConfiguration.contrast = 1.15; // More contrast
+      
+      // FXAA for smooth edges
+      pipeline.fxaaEnabled = true;
       
       // GPU performance optimizations
-      pipeline.samples = 1; // Disable MSAA for better GPU performance (post-processing handles smoothing)
+      pipeline.samples = 4; // Enable MSAA for better quality
       
-      console.log('✅ GPU-accelerated post-processing pipeline created');
+      console.log('✅ GPU-accelerated post-processing pipeline created with enhanced quality');
 
       // Create gizmo manager for light manipulation
       const gizmos = new GizmoManager(scene);
@@ -1010,19 +1021,15 @@ export default function BabylonSceneContent() {
       
       console.log('📦 Loading batcave model...');
       
-      // Load GLB - Production uses Vercel Blob (CORS-friendly), Local uses /public
-      const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
-      const glbUrl = isProduction
-        ? 'https://dkpyy8zashbhkgoe.public.blob.vercel-storage.com/the_batcave.glb'
-        : '/the_batcave.glb';
+      // ALWAYS use Vercel Blob (works for both production and local dev)
+      const glbUrl = 'https://dkpyy8zashbhkgoe.public.blob.vercel-storage.com/the_batcave.glb';
 
-      console.log(`📂 Loading GLB from: ${glbUrl}`);
-      console.log(`📦 Environment: ${isProduction ? 'PRODUCTION (Vercel Blob - CORS enabled)' : 'LOCAL'}`);
-      console.log('📦 File size: 47.49 MB Draco-compressed');
-      console.log('🔧 Using Draco decompression for faster loading');
-      console.log('⏳ This should load in 3-5 seconds...');
+      console.log(`📂 Loading GLB from: Vercel Blob (CORS-enabled)`);
+      console.log(`📦 URL: ${glbUrl}`);
+      console.log('📦 File size: 121 MB uncompressed');
+      console.log('⏳ Loading from Vercel Blob...');
       
-      SceneLoader.AppendAsync(isProduction ? glbUrl : '/', isProduction ? '' : 'the_batcave.glb', scene, (event) => {
+      SceneLoader.AppendAsync(glbUrl, '', scene, (event) => {
         if (event.lengthComputable) {
           const progress = (event.loaded / event.total * 100).toFixed(1);
           console.log(`📥 Loading progress: ${progress}%`);
@@ -2251,8 +2258,8 @@ export default function BabylonSceneContent() {
             stack: error.stack,
             name: error.name
           });
-          console.log('💡 Make sure the_batcave.glb is in the /public folder');
-          console.log('💡 Check browser Network tab for 404 errors');
+          console.log('💡 Check Vercel Blob URL accessibility');
+          console.log('💡 Check browser Network tab for CORS/404 errors');
           console.log('💡 Scene will continue with test sphere visible');
           
           // Show non-intrusive error notification

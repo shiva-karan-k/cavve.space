@@ -12,16 +12,16 @@ export type Vibe = {
 };
 
 export const PRESETS: Record<string, Vibe> = {
-  // Default mode - Bright T-Rex showcase view with warmer yellow lights
+  // Default mode - Cinema-quality lighting with visible beams (matches inspiration)
   default: {
     env: "",
-    envIntensity: 0.45,
-    exposure: 1.15,
-    bloom: { enabled: true, threshold: 1.05, weight: 0.14 },
-    fog: { enabled: true, density: 0.004 },
-    key: { intensity: 1600, angle: 35, kelvin: 2800 },  // Increased intensity, warmer yellow
-    rim: { intensity: 1050, angle: 28, kelvin: 2600 },  // Warmer yellow accent
-    emissiveIntensity: 5.5,
+    envIntensity: 0.35,  // Lower env for better contrast
+    exposure: 1.25,  // Higher exposure to see details
+    bloom: { enabled: true, threshold: 0.95, weight: 0.18 },  // More bloom for light glow
+    fog: { enabled: true, density: 0.008 },  // Higher fog for visible light beams
+    key: { intensity: 2200, angle: 28, kelvin: 2400 },  // Stronger, warmer golden spotlight
+    rim: { intensity: 1800, angle: 22, kelvin: 2500 },  // Stronger golden accent
+    emissiveIntensity: 6.5,  // Brighter screens
   },
   
   // Reference look
