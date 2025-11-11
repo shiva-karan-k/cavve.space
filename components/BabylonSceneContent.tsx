@@ -368,7 +368,7 @@ export default function BabylonSceneContent() {
       // Tone mapping - balanced for street lights
       scene.imageProcessingConfiguration.toneMappingEnabled = true;
       scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC
-      scene.imageProcessingConfiguration.exposure = 0.85; // Brighter - let lights be visible
+      scene.imageProcessingConfiguration.exposure = 0.95; // Increased brightness - golden lights visible
       scene.imageProcessingConfiguration.contrast = 1.0; // Neutral contrast
       
       // FXAA for smooth edges
