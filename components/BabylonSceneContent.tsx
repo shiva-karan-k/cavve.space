@@ -902,48 +902,8 @@ export default function BabylonSceneContent() {
       
       console.log('✅ Lighting system initialized');
       
-      // Subscribe to vibes store changes - will apply when scene loads
-      // Use a flag to prevent multiple rapid applications
-      let isApplyingVibe = false;
-      
-      let vibeQueue: any = null;
-      
-      const unsubscribeVibes = useVibesStore.subscribe((state) => {
-        // If already applying, queue the new vibe instead of skipping
-        if (isApplyingVibe) {
-          console.log('⏩ Vibe applying, queuing new one...');
-          vibeQueue = state.currentVibe;
-          return;
-        }
-        
-        console.log('🎨 Applying vibe smoothly (scene stays visible)...');
-        
-        if (sceneRef.current && pipelineRef.current && lightsRef.current.keySpot) {
-          isApplyingVibe = true;
-          
-          // Apply vibe without clearing or reloading scene
-          applyVibe(sceneRef.current, state.currentVibe);
-          
-          // Reset flag and process queue after smooth transition
-          setTimeout(() => { 
-            isApplyingVibe = false;
-            
-            // Process queued vibe if any
-            if (vibeQueue && sceneRef.current) {
-              console.log('📋 Applying queued vibe...');
-              const queuedVibe = vibeQueue;
-              vibeQueue = null;
-              isApplyingVibe = true;
-              applyVibe(sceneRef.current, queuedVibe);
-              setTimeout(() => { isApplyingVibe = false; }, 500);
-            }
-          }, 500);
-        } else {
-          console.warn('⚠️ Scene not ready, vibe will apply after load');
-        }
-      });
-      
-      console.log('✅ Vibes system subscription initialized');
+      // ===== VIBES SYSTEM DISABLED TEMPORARILY =====
+      console.log('⚠️ Vibes system DISABLED - using default scene lighting only');
       
       console.log('📦 Loading batcave model...');
       
