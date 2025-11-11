@@ -965,6 +965,13 @@ export default function BabylonSceneContent() {
         .then(() => {
           console.log('✅ Batcave scene loaded!');
           
+          // Remove test sphere once GLB loads successfully
+          const testSphere = scene.getMeshByName('testSphere');
+          if (testSphere) {
+            testSphere.dispose();
+            console.log('✅ Test sphere removed - GLB loaded successfully');
+          }
+          
           // ===== INSPECT GLB DEFAULT CONTENT =====
           console.log('📋 ===== GLB FILE CONTENTS =====');
           console.log('🔦 Lights in GLB:', scene.lights.length);
