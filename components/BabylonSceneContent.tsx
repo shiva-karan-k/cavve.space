@@ -636,43 +636,42 @@ export default function BabylonSceneContent() {
         scene.ambientColor = new Color3(0, 0, 0); // Pure black base for contrast
         
         if (preset === 'default' || preset === 'dramatic') {
-          // VOLUMETRIC YELLOW SPOTLIGHTS - Two key lights creating visible beams
+          // EVEN WARM LIGHTING - Wide soft lights for balanced scene visibility (matches reference)
           
-          // KEY LIGHT #1: Focused on Batmobile (center of scene)
-          const baseKeySpot = preset === 'dramatic' ? 2200 : 800;  // Locked at 800 min (cursor rules)
+          // KEY LIGHT: Wide soft yellow fill from above
+          const baseKeySpot = preset === 'dramatic' ? 2200 : 1200;
           const keyLight = new SpotLight('keyLight',
-            new Vector3(-3, 8, 0), // Elevated, slightly left - shining down on car
-            new Vector3(0.3, -1, 0), // Direction: angled down toward Batmobile center
-            Tools.ToRadians(28), // Focused cone for dramatic beam
-            0.08, // VERY low exponent = sharp, visible volumetric beam
+            new Vector3(0, 10, 0), // Directly above center
+            new Vector3(0, -1, 0), // Straight down
+            Tools.ToRadians(45), // WIDE angle for even coverage
+            0.5, // Higher exponent = soft, diffused light (not focused beam)
             scene);
-          keyLight.diffuse = new Color3(1.0, 0.70, 0.15); // Warm yellow (2600K)
+          keyLight.diffuse = new Color3(1.0, 0.85, 0.55); // Warm yellow-white (2800K)
           keyLight.intensity = baseKeySpot * currentSceneLighting;
           keyLight.shadowEnabled = true;
-          keyLight.range = 60; // Extended for volumetric visibility
+          keyLight.range = 80; // Wide coverage
           lightsRef.current.keySpot = keyLight;
           baseIntensitiesRef.current.keySpot = baseKeySpot;
           
-          // High-quality PCSS shadows for realistic soft shadows
-          const shadowGen = new ShadowGenerator(4096, keyLight);
-          shadowGen.useContactHardeningShadow = true;
-          shadowGen.contactHardeningLightSizeUVRatio = 0.05;
+          // Soft shadows for even lighting
+          const shadowGen = new ShadowGenerator(2048, keyLight);
+          shadowGen.useBlurExponentialShadowMap = true; // Soft diffused shadows
+          shadowGen.blurScale = 4;
           shadowGen.bias = 0.0001;
-          shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH;
-          shadowGen.darkness = 0.4; // Less darkness to keep visibility
+          shadowGen.darkness = 0.3; // Very light shadows
           
-          // KEY LIGHT #2: Focused on Cave Entry Plane (entrance/foreground)
-          const baseRimSpot = preset === 'dramatic' ? 1800 : 600;  // Locked at 600 min (cursor rules)
+          // RIM LIGHT: Additional wide soft fill
+          const baseRimSpot = preset === 'dramatic' ? 1800 : 900;
           const rimLight = new SpotLight('rimLight',
-            new Vector3(0, 8, -8), // High and back - shining toward entry
-            new Vector3(0, -1, 0.3), // Direction: angled down toward entry plane
-            Tools.ToRadians(30), // Slightly wider for entry coverage
-            0.08, // VERY low exponent = sharp, visible volumetric beam
+            new Vector3(0, 10, -5), // Elevated back
+            new Vector3(0, -1, 0.2), // Angled down and forward
+            Tools.ToRadians(45), // WIDE angle
+            0.5, // Soft diffused
             scene);
-          rimLight.diffuse = new Color3(1.0, 0.75, 0.20); // Warm yellow (2700K)
+          rimLight.diffuse = new Color3(1.0, 0.85, 0.55); // Matching warm yellow-white
           rimLight.intensity = baseRimSpot * currentSceneLighting;
-          rimLight.shadowEnabled = false; // No shadows = cleaner beam
-          rimLight.range = 60;
+          rimLight.shadowEnabled = false;
+          rimLight.range = 80;
           lightsRef.current.rimSpot = rimLight;
           baseIntensitiesRef.current.rimSpot = baseRimSpot;
           

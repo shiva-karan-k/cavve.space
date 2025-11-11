@@ -12,16 +12,16 @@ export type Vibe = {
 };
 
 export const PRESETS: Record<string, Vibe> = {
-  // Default mode - Balanced visibility with volumetric yellow spotlights
+  // Default mode - Evenly lit cave with warm yellow ambient (like reference image)
   default: {
     env: "",
-    envIntensity: 0.08,  // Minimal ambient (DO NOT LOWER - see cursor rules)
-    exposure: 0.85,  // Balanced exposure (DO NOT LOWER - see cursor rules)
-    bloom: { enabled: true, threshold: 0.95, weight: 0.20 },  // Enhanced bloom for volumetric effect
-    fog: { enabled: true, density: 0.010 },  // Higher fog for visible light beams
-    key: { intensity: 800, angle: 28, kelvin: 2600 },  // Warm yellow spotlight on car (focused)
-    rim: { intensity: 600, angle: 30, kelvin: 2700 },  // Warm yellow spotlight on cave entry
-    emissiveIntensity: 5.0,  // Glowing screens
+    envIntensity: 0.25,  // Higher ambient for even lighting across scene
+    exposure: 1.05,  // Brighter exposure to see all details
+    bloom: { enabled: true, threshold: 1.05, weight: 0.15 },  // Moderate bloom
+    fog: { enabled: true, density: 0.005 },  // Light fog for atmosphere
+    key: { intensity: 1200, angle: 45, kelvin: 2800 },  // Wider, softer yellow fill
+    rim: { intensity: 900, angle: 45, kelvin: 2800 },  // Wider, softer yellow fill
+    emissiveIntensity: 5.5,  // Bright glowing screens
   },
   
   // Reference look
