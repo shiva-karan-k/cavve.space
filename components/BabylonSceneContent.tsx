@@ -990,15 +990,15 @@ export default function BabylonSceneContent() {
       
       console.log('📦 Loading batcave model...');
       
-      // Load GLB from GitHub Releases (hosted separately due to 100MB limit)
-      // Fallback to local file for development
+      // Load GLB - Production uses CDN with CORS, Local uses /public
+      // Temporary: Using CORS proxy until we upload to Vercel Blob
       const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
       const glbUrl = isProduction 
-        ? 'https://github.com/shiva-karan-k/cavve/releases/download/v1.0/the_batcave.glb'
+        ? 'https://cors-anywhere.herokuapp.com/https://github.com/shiva-karan-k/cavve/releases/download/v1.0/the_batcave.glb'
         : '/the_batcave.glb';
       
       console.log(`📂 Loading GLB from: ${glbUrl}`);
-      console.log(`📦 Environment: ${isProduction ? 'PRODUCTION (GitHub Releases)' : 'LOCAL'}`);
+      console.log(`📦 Environment: ${isProduction ? 'PRODUCTION (Vercel Blob - CORS enabled)' : 'LOCAL'}`);
       console.log('📦 File size: 121 MB uncompressed');
       console.log('⏳ This may take 10-15 seconds to load...');
       
