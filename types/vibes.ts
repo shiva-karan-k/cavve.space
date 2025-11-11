@@ -12,16 +12,16 @@ export type Vibe = {
 };
 
 export const PRESETS: Record<string, Vibe> = {
-  // Default mode - BRIGHT evenly lit cave
+  // Default mode - BALANCED evenly lit cave (not blown out!)
   default: {
     env: "",
-    envIntensity: 0.45,  // HIGH ambient - everything visible
-    exposure: 1.35,  // MUCH brighter - details clearly visible
+    envIntensity: 0.25,  // Moderate ambient
+    exposure: 0.95,  // Balanced exposure (not blown out)
     bloom: { enabled: true, threshold: 1.1, weight: 0.12 },  // Subtle bloom
     fog: { enabled: true, density: 0.003 },  // Minimal fog
-    key: { intensity: 1600, angle: 60, kelvin: 5500 },  // Neutral white light
-    rim: { intensity: 1400, angle: 60, kelvin: 5500 },  // Neutral white light
-    emissiveIntensity: 5.5,  // Bright glowing screens
+    key: { intensity: 800, angle: 60, kelvin: 5500 },  // Moderate white light
+    rim: { intensity: 700, angle: 60, kelvin: 5500 },  // Moderate white light
+    emissiveIntensity: 5.0,  // Glowing screens
   },
   
   // Ultra Golden Cave (accidental but beautiful)
