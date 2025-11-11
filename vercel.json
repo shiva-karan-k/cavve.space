@@ -1,7 +1,8 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "git lfs pull && npm run build",
   "outputDirectory": ".next",
   "framework": "nextjs",
   "installCommand": "npm install"
 }
+
 
