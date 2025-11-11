@@ -38,8 +38,9 @@ export const useVajranStore = create<VajranStore>()(
     }),
     {
       name: 'vajran-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: typeof window !== 'undefined' ? createJSONStorage(() => localStorage) : undefined,
     }
   )
 );
+
 

@@ -60,7 +60,7 @@ export const useSocialStore = create<SocialStore>()(
     }),
     {
       name: 'social-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: typeof window !== 'undefined' ? createJSONStorage(() => localStorage) : undefined,
     }
   )
 );

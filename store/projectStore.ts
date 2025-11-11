@@ -190,7 +190,7 @@ export const useProjectStore = create<ProjectStore>()(
     }),
     {
       name: 'batman-cave-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: typeof window !== 'undefined' ? createJSONStorage(() => localStorage) : undefined,
     }
   )
 );
