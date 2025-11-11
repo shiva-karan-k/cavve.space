@@ -635,15 +635,16 @@ export default function BabylonSceneContent() {
         // Just enough ambient to make things visible, GLB emissives do the rest
         
         if (preset === 'default' || preset === 'dramatic') {
-          // MINIMAL ambient fill for visibility
-          const baseAmbient = 0.5; // Subtle fill light
+          // BRIGHT ambient fill for even lighting across the scene
+          const baseAmbient = 3.0; // Much brighter for visibility
           const ambientLight = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), scene);
           ambientLight.intensity = baseAmbient;
-          ambientLight.diffuse = new Color3(0.8, 0.8, 0.9); // Slight cool tint
+          ambientLight.diffuse = new Color3(1.0, 1.0, 1.0); // Pure white for maximum brightness
+          ambientLight.groundColor = new Color3(0.2, 0.2, 0.2); // Slight ground fill
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
           
-          console.log(`✅ Minimal ambient lighting applied (${baseAmbient}) - GLB emissives handle the rest`);
+          console.log(`✅ Bright ambient lighting applied (${baseAmbient}) - matching reference brightness`);
           
         } else if (preset === 'bright') {
           // Bright, even lighting
