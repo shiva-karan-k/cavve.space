@@ -299,14 +299,14 @@ export default function BabylonSceneContent() {
       console.log('✅ Babylon loading screen disabled');
 
       // ===== SPAWN POINT - Looking directly at the screens/center from elevated front =====
-      const CAVE_CENTER = new Vector3(0, 2, 0);    // Center elevated to screen height
+      const CAVE_CENTER = new Vector3(0, 1.5, 0);    // Center elevated to screen height
 
       // Camera positioned in FRONT and ABOVE, looking down at the main screens/car
       camera = new ArcRotateCamera(
         'camera',
         Tools.ToRadians(0),    // Alpha: 0° = directly in front (facing -Z)
-        Tools.ToRadians(65),   // Beta: 65° = looking down from above
-        20,                    // Radius: 20 units back
+        Tools.ToRadians(70),   // Beta: 70° = looking down slightly more
+        12,                    // Radius: 12 units (CLOSER to see with current lighting)
         CAVE_CENTER,
         scene
       );
@@ -1636,7 +1636,7 @@ export default function BabylonSceneContent() {
                   if (mat.disableLighting !== undefined) {
                     mat.disableLighting = true;
                   }
-                  mat.markAsDirty();
+                mat.markAsDirty();
                   
                   // Store screen material reference with original emissive
                   screenMaterialsRef.current.push({ material: mat, baseEmissive });
@@ -1666,7 +1666,7 @@ export default function BabylonSceneContent() {
                     if (mat.disableLighting !== undefined) {
                       mat.disableLighting = true;
                     }
-                    mat.markAsDirty();
+                      mat.markAsDirty();
                     
                     screenMaterialsRef.current.push({ material: mat, baseEmissive });
                     console.log(`  💡 Boosted emissive intensity for: ${mesh.name} (color preserved)`);
