@@ -365,11 +365,11 @@ export default function BabylonSceneContent() {
       scene.imageProcessingConfiguration.vignetteWeight = 0.25; // More dramatic
       scene.imageProcessingConfiguration.vignetteCameraFov = 1.5; // Wider falloff
       
-      // Tone mapping - moody cave atmosphere
+      // Tone mapping - balanced for street lights
       scene.imageProcessingConfiguration.toneMappingEnabled = true;
       scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC
-      scene.imageProcessingConfiguration.exposure = 0.85; // Lower for moody darkness
-      scene.imageProcessingConfiguration.contrast = 1.05; // Slight contrast boost for depth
+      scene.imageProcessingConfiguration.exposure = 0.90; // Slightly brighter for street lights
+      scene.imageProcessingConfiguration.contrast = 1.0; // Neutral contrast
       
       // FXAA for smooth edges
       pipeline.fxaaEnabled = true;
@@ -636,12 +636,12 @@ export default function BabylonSceneContent() {
         if (glbLightCount === 0) {
           console.log('⚠️ GLB has 0 lights - adding fallback HemisphericLight');
           
-          // Fallback ambient light (MOODY cave - darker, warmer)
-          const baseAmbient = 1.5; // MUCH lower - moody cave vibes (was 4.0 - too bright)
+          // Fallback ambient light (ONLINE mode - with street lights)
+          const baseAmbient = 2.0; // Moderate - street lights do most of the work
           const ambientLight = new HemisphericLight('fallbackAmbient', new Vector3(0, 1, 0), scene);
           ambientLight.intensity = baseAmbient * currentSceneLighting;
-          ambientLight.diffuse = new Color3(0.85, 0.82, 0.75); // Subtle warm tint for golden car
-          ambientLight.groundColor = new Color3(0.12, 0.12, 0.12); // Very dark ground
+          ambientLight.diffuse = new Color3(0.88, 0.85, 0.80); // Neutral warm
+          ambientLight.groundColor = new Color3(0.15, 0.15, 0.15); // Dark ground
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
           
@@ -945,8 +945,8 @@ export default function BabylonSceneContent() {
           const lampMeshes = emissiveMeshes.length >= 2 ? emissiveMeshes : lampMeshesByName;
           console.log(`  ✅ Using ${lampMeshes.length} lamp meshes for light creation`);
           
-          // Make yellow lamp MESHES glow (emissive)
-          console.log('  💡 Making yellow lamp MESHES emissive...');
+          // Make yellow lamp MESHES glow (emissive) + create actual PointLights
+          console.log('  💡 Making yellow lamp MESHES emissive + creating street lights...');
           
           let emissiveMeshCount = 0;
           lampMeshes.forEach((lampMesh: any) => {
@@ -954,7 +954,7 @@ export default function BabylonSceneContent() {
               const materials = Array.isArray(lampMesh.material) ? lampMesh.material : [lampMesh.material];
               materials.forEach((mat: any) => {
                 if (mat.emissiveColor || mat.emissiveTexture) {
-                  mat.emissiveIntensity = 6.0; // Moderate glow (subtle, not overdone)
+                  mat.emissiveIntensity = 10.0; // High glow for lamp meshes
                   mat.disableLighting = true; // Meshes emit light, not receive
                   mat.markAsDirty();
                   emissiveMeshCount++;
@@ -962,7 +962,42 @@ export default function BabylonSceneContent() {
               });
             }
           });
-          console.log(`    ✅ Made ${emissiveMeshCount} yellow lamp materials emissive (intensity: 6.0)`);
+          console.log(`    ✅ Made ${emissiveMeshCount} yellow lamp materials emissive (intensity: 10.0)`);
+          
+          // Create ACTUAL PointLights at yellow lamp positions (Indian street light vibe)
+          // Find 2 lamps: left entry + above car
+          const leftEntryLamp = lampMeshes.find((lamp: any) => {
+            const pos = lamp.getAbsolutePosition();
+            return pos.x < -3 && pos.y > 2; // Left side, elevated
+          });
+          
+          const carLamp = lampMeshes.find((lamp: any) => {
+            const pos = lamp.getAbsolutePosition();
+            return Math.abs(pos.x) < 3 && Math.abs(pos.z) < 3 && pos.y > 3; // Center, high up
+          });
+          
+          let streetLightsCreated = 0;
+          if (leftEntryLamp) {
+            const streetLight = new PointLight('leftStreetLight', leftEntryLamp.getAbsolutePosition(), scene);
+            streetLight.intensity = 120; // Strong illumination
+            streetLight.range = 25; // Wide coverage
+            streetLight.diffuse = new Color3(1.0, 0.75, 0.4); // Traditional Indian sodium vapor yellow-orange
+            streetLight.specular = new Color3(0.5, 0.35, 0.15); // Warm specular
+            streetLightsCreated++;
+            console.log(`    ✅ Created LEFT street light (Indian yellow)`);
+          }
+          
+          if (carLamp) {
+            const streetLight = new PointLight('carStreetLight', carLamp.getAbsolutePosition(), scene);
+            streetLight.intensity = 120; // Strong illumination
+            streetLight.range = 25; // Wide coverage
+            streetLight.diffuse = new Color3(1.0, 0.75, 0.4); // Traditional Indian sodium vapor yellow-orange
+            streetLight.specular = new Color3(0.5, 0.35, 0.15); // Warm specular
+            streetLightsCreated++;
+            console.log(`    ✅ Created CAR street light (Indian yellow)`);
+          }
+          
+          console.log(`  ✅ Created ${streetLightsCreated} traditional Indian yellow street lights`);
           
           console.log('✅ GLB native lights loaded and stored as default preset');
           console.log('🖼️ Textures:', scene.textures.length);
