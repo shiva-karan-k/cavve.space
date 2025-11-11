@@ -368,7 +368,7 @@ export default function BabylonSceneContent() {
       // Tone mapping - balanced for grungy PBR materials
       scene.imageProcessingConfiguration.toneMappingEnabled = true;
       scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC
-      scene.imageProcessingConfiguration.exposure = 0.90; // Slightly lower for darker, grungier cave look
+      scene.imageProcessingConfiguration.exposure = 1.0; // Neutral - let fallback light do the work
       scene.imageProcessingConfiguration.contrast = 1.0; // Neutral contrast (no boosting)
       
       // FXAA for smooth edges
@@ -634,14 +634,14 @@ export default function BabylonSceneContent() {
         console.log(`🔍 Checking GLB lights: ${glbLightCount} found`);
         
         if (glbLightCount === 0) {
-          console.log('⚠️ GLB has 0 lights - adding minimal fallback HemisphericLight');
+          console.log('⚠️ GLB has 0 lights - adding fallback HemisphericLight');
           
-          // Minimal fallback ambient light (cave vibes, not too bright)
-          const baseAmbient = 1.8;
+          // Fallback ambient light (must be bright enough to see cave)
+          const baseAmbient = 3.5; // Increased from 2.5 - cave must be visible
           const ambientLight = new HemisphericLight('fallbackAmbient', new Vector3(0, 1, 0), scene);
           ambientLight.intensity = baseAmbient * currentSceneLighting;
           ambientLight.diffuse = new Color3(0.95, 0.92, 0.88); // Subtle warm (mostly neutral)
-          ambientLight.groundColor = new Color3(0.15, 0.15, 0.15); // Neutral grey ground
+          ambientLight.groundColor = new Color3(0.22, 0.22, 0.22); // Brighter ground fill
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
           
@@ -1534,7 +1534,7 @@ export default function BabylonSceneContent() {
                   baseEmissive = new Color3(0.5, 0.5, 0.5);
                 }
                 mat.emissiveColor = baseEmissive;
-                mat.emissiveIntensity = mat.emissiveIntensity || 5.0; // High intensity so screens stay bright
+                mat.emissiveIntensity = 8.0; // VERY high intensity - screens must be bright
                 // Disable lighting on emissive materials so they're not affected by scene lighting
                 if (mat.disableLighting !== undefined) {
                   mat.disableLighting = true; // Screens emit their own light
@@ -1568,7 +1568,7 @@ export default function BabylonSceneContent() {
                         Math.min(1, emissive.b * 2)
                       );
                       mat.emissiveColor = baseEmissive;
-                      mat.emissiveIntensity = mat.emissiveIntensity || 5.0;
+                      mat.emissiveIntensity = 8.0; // VERY high - emissives must glow
                       // Disable lighting on emissive materials so they're not affected by scene lighting
                       if (mat.disableLighting !== undefined) {
                         mat.disableLighting = true;
@@ -1580,9 +1580,9 @@ export default function BabylonSceneContent() {
                       console.log(`  💡 Turned on emissive for: ${mesh.name}`);
                     }
                   } else if (emissiveIntensity >= 0.3) {
-                    // Already bright emissive - ensure it stays bright
+                    // Already bright emissive - ensure it stays VERY bright
                     const baseEmissive = new Color3(emissive.r, emissive.g, emissive.b);
-                    mat.emissiveIntensity = mat.emissiveIntensity || 5.0;
+                    mat.emissiveIntensity = 8.0; // VERY high - screens must be bright
                     if (mat.disableLighting !== undefined) {
                       mat.disableLighting = true;
                     }
