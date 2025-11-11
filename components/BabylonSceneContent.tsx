@@ -636,12 +636,12 @@ export default function BabylonSceneContent() {
         if (glbLightCount === 0) {
           console.log('⚠️ GLB has 0 lights - adding fallback HemisphericLight');
           
-          // Fallback ambient light (must be bright enough to see cave)
-          const baseAmbient = 3.5; // Increased from 2.5 - cave must be visible
+          // Fallback ambient light (balanced cave lighting)
+          const baseAmbient = 2.2; // Lower from 3.5 - was too bright
           const ambientLight = new HemisphericLight('fallbackAmbient', new Vector3(0, 1, 0), scene);
           ambientLight.intensity = baseAmbient * currentSceneLighting;
-          ambientLight.diffuse = new Color3(0.95, 0.92, 0.88); // Subtle warm (mostly neutral)
-          ambientLight.groundColor = new Color3(0.22, 0.22, 0.22); // Brighter ground fill
+          ambientLight.diffuse = new Color3(0.92, 0.92, 0.92); // Neutral grey (no warm tint)
+          ambientLight.groundColor = new Color3(0.15, 0.15, 0.15); // Darker ground
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
           
@@ -1515,79 +1515,55 @@ export default function BabylonSceneContent() {
             screenMesh.isVisible = true;
             
             // Enable emissive materials on screens to make them glow/visible
-            // Store base emissive values so screens stay bright regardless of scene lighting
+            // ONLY boost intensity - DON'T change colors (preserve GLB's original blue/cyan)
             if (screenMesh.material) {
               const materials = Array.isArray(screenMesh.material) ? screenMesh.material : [screenMesh.material];
               materials.forEach((mat: any) => {
-                // Turn on emissive for screens
-                let baseEmissive: Color3;
                 if (mat.emissiveColor) {
-                  // If emissive is very low or zero, set it to visible
-                  const emissive = mat.emissiveColor;
-                  if (emissive.r < 0.3 && emissive.g < 0.3 && emissive.b < 0.3) {
-                    baseEmissive = new Color3(0.5, 0.5, 0.5); // Make screens glow
-                  } else {
-                    baseEmissive = new Color3(emissive.r, emissive.g, emissive.b);
+                  // Store original emissive color (DON'T modify it!)
+                  const baseEmissive = new Color3(mat.emissiveColor.r, mat.emissiveColor.g, mat.emissiveColor.b);
+                  
+                  // ONLY boost intensity - preserve original color
+                  mat.emissiveIntensity = 8.0; // High intensity
+                  
+                  // Disable lighting so screens emit regardless of scene darkness
+                  if (mat.disableLighting !== undefined) {
+                    mat.disableLighting = true;
                   }
-                } else {
-                  // Add emissive if it doesn't exist
-                  baseEmissive = new Color3(0.5, 0.5, 0.5);
+                  mat.markAsDirty();
+                  
+                  // Store screen material reference with original emissive
+                  screenMaterialsRef.current.push({ material: mat, baseEmissive });
                 }
-                mat.emissiveColor = baseEmissive;
-                mat.emissiveIntensity = 8.0; // VERY high intensity - screens must be bright
-                // Disable lighting on emissive materials so they're not affected by scene lighting
-                if (mat.disableLighting !== undefined) {
-                  mat.disableLighting = true; // Screens emit their own light
-                }
-                mat.markAsDirty();
-                
-                // Store screen material reference with base emissive
-                screenMaterialsRef.current.push({ material: mat, baseEmissive });
               });
             }
             console.log(`  ✅ Enabled screen: ${screenMesh.name}`);
           });
           
-          // Also check for meshes with emissive materials that might be lights/screens
+          // Also check for meshes with emissive materials (lights/screens)
+          // ONLY boost intensity - DON'T change colors
           meshes.forEach((mesh: any) => {
             if (mesh.material) {
               const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
               materials.forEach((mat: any) => {
-                // If material has emissive, it might be a light or screen
                 if (mat.emissiveColor) {
                   const emissive = mat.emissiveColor;
                   const emissiveIntensity = emissive.r + emissive.g + emissive.b;
-                  // If emissive exists but is very low, turn it on
-                  if (emissiveIntensity > 0 && emissiveIntensity < 0.3) {
-                    const currentMax = Math.max(emissive.r, emissive.g, emissive.b);
-                    if (currentMax > 0) {
-                      // Scale up existing emissive
-                      const baseEmissive = new Color3(
-                        Math.min(1, emissive.r * 2),
-                        Math.min(1, emissive.g * 2),
-                        Math.min(1, emissive.b * 2)
-                      );
-                      mat.emissiveColor = baseEmissive;
-                      mat.emissiveIntensity = 8.0; // VERY high - emissives must glow
-                      // Disable lighting on emissive materials so they're not affected by scene lighting
-                      if (mat.disableLighting !== undefined) {
-                        mat.disableLighting = true;
-                      }
-                      mat.markAsDirty();
-                      
-                      // Store emissive material reference
-                      screenMaterialsRef.current.push({ material: mat, baseEmissive });
-                      console.log(`  💡 Turned on emissive for: ${mesh.name}`);
-                    }
-                  } else if (emissiveIntensity >= 0.3) {
-                    // Already bright emissive - ensure it stays VERY bright
+                  
+                  // If material has ANY emissive color, boost intensity (preserve color!)
+                  if (emissiveIntensity > 0.01) {
+                    // Store ORIGINAL emissive color (DON'T modify!)
                     const baseEmissive = new Color3(emissive.r, emissive.g, emissive.b);
-                    mat.emissiveIntensity = 8.0; // VERY high - screens must be bright
+                    
+                    // ONLY boost intensity - preserve original color
+                    mat.emissiveIntensity = 8.0; // High for all emissives
                     if (mat.disableLighting !== undefined) {
                       mat.disableLighting = true;
                     }
                     mat.markAsDirty();
+                    
                     screenMaterialsRef.current.push({ material: mat, baseEmissive });
+                    console.log(`  💡 Boosted emissive intensity for: ${mesh.name} (color preserved)`);
                   }
                 }
               });
