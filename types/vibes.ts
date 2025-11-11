@@ -12,16 +12,16 @@ export type Vibe = {
 };
 
 export const PRESETS: Record<string, Vibe> = {
-  // Default mode - Dark moody cave with selective lighting
+  // Default mode - Balanced visibility with volumetric yellow spotlights
   default: {
     env: "",
-    envIntensity: 0.08,  // Very low ambient - cave should be dark
-    exposure: 0.85,  // Lower exposure for darker atmosphere
-    bloom: { enabled: true, threshold: 1.05, weight: 0.14 },  // Subtle bloom
-    fog: { enabled: true, density: 0.006 },  // Moderate fog
-    key: { intensity: 800, angle: 32, kelvin: 2800 },  // Moderate golden spotlight
-    rim: { intensity: 600, angle: 25, kelvin: 3000 },  // Moderate accent light
-    emissiveIntensity: 5.0,  // Glowing screens stand out in darkness
+    envIntensity: 0.08,  // Minimal ambient (DO NOT LOWER - see cursor rules)
+    exposure: 0.85,  // Balanced exposure (DO NOT LOWER - see cursor rules)
+    bloom: { enabled: true, threshold: 0.95, weight: 0.20 },  // Enhanced bloom for volumetric effect
+    fog: { enabled: true, density: 0.010 },  // Higher fog for visible light beams
+    key: { intensity: 800, angle: 28, kelvin: 2600 },  // Warm yellow spotlight on car (focused)
+    rim: { intensity: 600, angle: 30, kelvin: 2700 },  // Warm yellow spotlight on cave entry
+    emissiveIntensity: 5.0,  // Glowing screens
   },
   
   // Reference look

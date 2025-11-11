@@ -636,19 +636,20 @@ export default function BabylonSceneContent() {
         scene.ambientColor = new Color3(0, 0, 0); // Pure black base for contrast
         
         if (preset === 'default' || preset === 'dramatic') {
-          // Cinema-quality lighting: Strong golden spotlights (matches inspiration)
-          // Key Light (Main illumination - STRONG warm golden like inspiration)
-          const baseKeySpot = preset === 'dramatic' ? 2200 : 1800;
+          // VOLUMETRIC YELLOW SPOTLIGHTS - Two key lights creating visible beams
+          
+          // KEY LIGHT #1: Focused on Batmobile (center of scene)
+          const baseKeySpot = preset === 'dramatic' ? 2200 : 800;  // Locked at 800 min (cursor rules)
           const keyLight = new SpotLight('keyLight',
-            new Vector3(0, 5, -3), // Position
-            new Vector3(0, -1.2, 0), // Direction (down and forward)
-            Tools.ToRadians(28), // Narrower angle for focused beam
-            0.15, // Lower exponent for sharper falloff and visible beams
+            new Vector3(-3, 8, 0), // Elevated, slightly left - shining down on car
+            new Vector3(0.3, -1, 0), // Direction: angled down toward Batmobile center
+            Tools.ToRadians(28), // Focused cone for dramatic beam
+            0.08, // VERY low exponent = sharp, visible volumetric beam
             scene);
-          keyLight.diffuse = new Color3(1.0, 0.75, 0.35); // Warmer golden (2400K)
+          keyLight.diffuse = new Color3(1.0, 0.70, 0.15); // Warm yellow (2600K)
           keyLight.intensity = baseKeySpot * currentSceneLighting;
           keyLight.shadowEnabled = true;
-          keyLight.range = 50; // Extended range for better coverage
+          keyLight.range = 60; // Extended for volumetric visibility
           lightsRef.current.keySpot = keyLight;
           baseIntensitiesRef.current.keySpot = baseKeySpot;
           
@@ -658,20 +659,20 @@ export default function BabylonSceneContent() {
           shadowGen.contactHardeningLightSizeUVRatio = 0.05;
           shadowGen.bias = 0.0001;
           shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH;
-          shadowGen.darkness = 0.5; // Less darkness to see details
+          shadowGen.darkness = 0.4; // Less darkness to keep visibility
           
-          // Rim Light (Edge highlights - STRONG golden accent like inspiration)
-          const baseRimSpot = preset === 'dramatic' ? 1800 : 1400;
+          // KEY LIGHT #2: Focused on Cave Entry Plane (entrance/foreground)
+          const baseRimSpot = preset === 'dramatic' ? 1800 : 600;  // Locked at 600 min (cursor rules)
           const rimLight = new SpotLight('rimLight',
-            new Vector3(4.0, 2.2, 2.2), // Position
-            new Vector3(-1, -0.3, -0.6), // Direction
-            Tools.ToRadians(22), // Narrower for focused beam
-            0.2, // Sharper falloff for visible beam
+            new Vector3(0, 8, -8), // High and back - shining toward entry
+            new Vector3(0, -1, 0.3), // Direction: angled down toward entry plane
+            Tools.ToRadians(30), // Slightly wider for entry coverage
+            0.08, // VERY low exponent = sharp, visible volumetric beam
             scene);
-          rimLight.diffuse = new Color3(1.0, 0.80, 0.40); // Warm golden (2500K)
+          rimLight.diffuse = new Color3(1.0, 0.75, 0.20); // Warm yellow (2700K)
           rimLight.intensity = baseRimSpot * currentSceneLighting;
-          rimLight.shadowEnabled = false; // Rim doesn't cast shadows
-          rimLight.range = 40;
+          rimLight.shadowEnabled = false; // No shadows = cleaner beam
+          rimLight.range = 60;
           lightsRef.current.rimSpot = rimLight;
           baseIntensitiesRef.current.rimSpot = baseRimSpot;
           
