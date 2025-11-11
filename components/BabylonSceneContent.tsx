@@ -683,31 +683,6 @@ export default function BabylonSceneContent() {
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
           
-          // ADDITIONAL VOLUMETRIC YELLOW SPOTLIGHTS (Points 1 & 4 from reference)
-          // Yellow Spotlight #1: Left platform area (Point 1)
-          const yellowSpot1 = new SpotLight('yellowSpot1',
-            new Vector3(-6, 4, -2), // Left side, elevated
-            new Vector3(0.3, -1, 0.2), // Angled down and inward
-            Tools.ToRadians(25), // Focused cone
-            0.08, // Sharp falloff for visible volumetric beam
-            scene);
-          yellowSpot1.diffuse = new Color3(1.0, 0.65, 0.1); // Bright warm yellow-orange
-          yellowSpot1.intensity = 800 * currentSceneLighting;
-          yellowSpot1.range = 40;
-          yellowSpot1.shadowEnabled = false;
-          
-          // Yellow Spotlight #2: Right side near Batmobile (Point 4)
-          const yellowSpot2 = new SpotLight('yellowSpot2',
-            new Vector3(6, 4, 1), // Right side, elevated
-            new Vector3(-0.3, -1, -0.1), // Angled down and inward
-            Tools.ToRadians(25), // Focused cone
-            0.08, // Sharp falloff for visible volumetric beam
-            scene);
-          yellowSpot2.diffuse = new Color3(1.0, 0.65, 0.1); // Bright warm yellow-orange
-          yellowSpot2.intensity = 800 * currentSceneLighting;
-          yellowSpot2.range = 40;
-          yellowSpot2.shadowEnabled = false;
-          
         } else if (preset === 'bright') {
           // Bright, even lighting
           const baseAmbient = currentAmbient * 2;
@@ -1055,16 +1030,56 @@ export default function BabylonSceneContent() {
             console.log(`  ✅ Hemispheric light: ${glbLights.hemisphericLights[0].name} (intensity: ${glbLights.hemisphericLights[0].intensity})`);
           }
           
-          if (glbLights.pointLights.length > 0) {
-            lightsRef.current.point1 = glbLights.pointLights[0];
-            baseIntensitiesRef.current.point1 = glbLights.pointLights[0].intensity;
-            console.log(`  ✅ Point light 1: ${glbLights.pointLights[0].name} (intensity: ${glbLights.pointLights[0].intensity})`);
-          }
+          // GLB has no light objects, but has emissive lamp meshes
+          // Find the lamp meshes and create lights at their positions
+          console.log('🔍 Searching for lamp meshes to create volumetric lights...');
+          const lampMeshes = scene.meshes.filter(m => 
+            m.name && (
+              m.name.toLowerCase().includes('lamp') ||
+              m.name.toLowerCase().includes('light') ||
+              m.name.toLowerCase().includes('bulb') ||
+              m.name.toLowerCase().includes('lantern')
+            )
+          );
           
-          if (glbLights.pointLights.length > 1) {
-            lightsRef.current.point2 = glbLights.pointLights[1];
-            baseIntensitiesRef.current.point2 = glbLights.pointLights[1].intensity;
-            console.log(`  ✅ Point light 2: ${glbLights.pointLights[1].name} (intensity: ${glbLights.pointLights[1].intensity})`);
+          console.log(`  Found ${lampMeshes.length} potential lamp meshes:`, lampMeshes.map(m => m.name));
+          
+          if (lampMeshes.length >= 2) {
+            // Create point lights at lamp positions
+            const lamp1Pos = lampMeshes[0].getAbsolutePosition();
+            const pointLight1 = new PointLight('yellowVolumetric1', lamp1Pos, scene);
+            pointLight1.intensity = 800;
+            pointLight1.diffuse = new Color3(1.0, 0.65, 0.1); // Warm yellow-orange
+            pointLight1.range = 40;
+            lightsRef.current.point1 = pointLight1;
+            baseIntensitiesRef.current.point1 = 800;
+            console.log(`  ✅ Created volumetric light at ${lampMeshes[0].name}: ${lamp1Pos}`);
+            
+            const lamp2Pos = lampMeshes[1].getAbsolutePosition();
+            const pointLight2 = new PointLight('yellowVolumetric2', lamp2Pos, scene);
+            pointLight2.intensity = 800;
+            pointLight2.diffuse = new Color3(1.0, 0.65, 0.1); // Warm yellow-orange
+            pointLight2.range = 40;
+            lightsRef.current.point2 = pointLight2;
+            baseIntensitiesRef.current.point2 = 800;
+            console.log(`  ✅ Created volumetric light at ${lampMeshes[1].name}: ${lamp2Pos}`);
+          } else {
+            console.log('  ⚠️ Not enough lamp meshes found, using default positions');
+            // Fallback positions based on reference image
+            const pointLight1 = new PointLight('yellowVolumetric1', new Vector3(-6, 4, -2), scene);
+            pointLight1.intensity = 800;
+            pointLight1.diffuse = new Color3(1.0, 0.65, 0.1);
+            pointLight1.range = 40;
+            lightsRef.current.point1 = pointLight1;
+            baseIntensitiesRef.current.point1 = 800;
+            
+            const pointLight2 = new PointLight('yellowVolumetric2', new Vector3(6, 4, 1), scene);
+            pointLight2.intensity = 800;
+            pointLight2.diffuse = new Color3(1.0, 0.65, 0.1);
+            pointLight2.range = 40;
+            lightsRef.current.point2 = pointLight2;
+            baseIntensitiesRef.current.point2 = 800;
+            console.log('  ✅ Created volumetric lights at default positions');
           }
           
           console.log('✅ GLB native lights loaded and stored as default preset');
@@ -1756,11 +1771,10 @@ export default function BabylonSceneContent() {
                   // Force shader compilation by marking material as dirty
                   mat.markAsDirty();
                   
-                  // Ensure materials receive ambient and diffuse lighting
+                  // DON'T override metallic/roughness - preserve original dirty/grungy PBR look
+                  // Just ensure environment lighting works
                   if (mat.metallicFactor !== undefined || mat.roughnessFactor !== undefined) {
                     mat.environmentIntensity = 1.0;
-                    if (mat.metallicFactor !== undefined) mat.metallicFactor = 0.5;
-                    if (mat.roughnessFactor !== undefined) mat.roughnessFactor = 0.5;
                   }
                   
                   // For PBR materials, ensure all shader features are enabled
@@ -1866,18 +1880,8 @@ export default function BabylonSceneContent() {
                   }
                 }
                 
-                // Force material update and shader recompilation
+                // Force material update (shader compiles on first render)
                 mat.markAsDirty();
-                mat.forceCompilation?.();
-                
-                // Ensure material is ready
-                if (mat.getEffect) {
-                  try {
-                    mat.getEffect();
-                  } catch (e) {
-                    // Will compile on first render
-                  }
-                }
               });
             }
             
