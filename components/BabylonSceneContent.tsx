@@ -365,11 +365,11 @@ export default function BabylonSceneContent() {
       scene.imageProcessingConfiguration.vignetteWeight = 0.25; // More dramatic
       scene.imageProcessingConfiguration.vignetteCameraFov = 1.5; // Wider falloff
       
-      // Tone mapping - balanced for grungy PBR materials
+      // Tone mapping - moody cave atmosphere
       scene.imageProcessingConfiguration.toneMappingEnabled = true;
       scene.imageProcessingConfiguration.toneMappingType = 3; // FILMIC
-      scene.imageProcessingConfiguration.exposure = 1.0; // Neutral - let fallback light do the work
-      scene.imageProcessingConfiguration.contrast = 1.0; // Neutral contrast (no boosting)
+      scene.imageProcessingConfiguration.exposure = 0.85; // Lower for moody darkness
+      scene.imageProcessingConfiguration.contrast = 1.05; // Slight contrast boost for depth
       
       // FXAA for smooth edges
       pipeline.fxaaEnabled = true;
@@ -636,12 +636,12 @@ export default function BabylonSceneContent() {
         if (glbLightCount === 0) {
           console.log('⚠️ GLB has 0 lights - adding fallback HemisphericLight');
           
-          // Fallback ambient light (balanced cave lighting)
-          const baseAmbient = 4.0; // Increased from 2.2 per user request
+          // Fallback ambient light (MOODY cave - darker, warmer)
+          const baseAmbient = 1.5; // MUCH lower - moody cave vibes (was 4.0 - too bright)
           const ambientLight = new HemisphericLight('fallbackAmbient', new Vector3(0, 1, 0), scene);
           ambientLight.intensity = baseAmbient * currentSceneLighting;
-          ambientLight.diffuse = new Color3(0.92, 0.92, 0.92); // Neutral grey (no warm tint)
-          ambientLight.groundColor = new Color3(0.15, 0.15, 0.15); // Darker ground
+          ambientLight.diffuse = new Color3(0.85, 0.82, 0.75); // Subtle warm tint for golden car
+          ambientLight.groundColor = new Color3(0.12, 0.12, 0.12); // Very dark ground
           lightsRef.current.ambient = ambientLight;
           baseIntensitiesRef.current.ambient = baseAmbient;
           
@@ -1523,8 +1523,8 @@ export default function BabylonSceneContent() {
                   // Store original emissive color (DON'T modify it!)
                   const baseEmissive = new Color3(mat.emissiveColor.r, mat.emissiveColor.g, mat.emissiveColor.b);
                   
-                  // ONLY boost intensity - preserve original color
-                  mat.emissiveIntensity = 8.0; // High intensity
+                  // ONLY boost intensity - preserve original color (blue Batman screens!)
+                  mat.emissiveIntensity = 10.0; // Very high - screens must glow in dark cave
                   
                   // Disable lighting so screens emit regardless of scene darkness
                   if (mat.disableLighting !== undefined) {
@@ -1556,7 +1556,7 @@ export default function BabylonSceneContent() {
                     const baseEmissive = new Color3(emissive.r, emissive.g, emissive.b);
                     
                     // ONLY boost intensity - preserve original color
-                    mat.emissiveIntensity = 8.0; // High for all emissives
+                    mat.emissiveIntensity = 10.0; // Very high - emissives must glow in dark cave
                     if (mat.disableLighting !== undefined) {
                       mat.disableLighting = true;
                     }
