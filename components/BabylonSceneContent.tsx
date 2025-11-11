@@ -982,16 +982,12 @@ export default function BabylonSceneContent() {
           console.log(`   Current type: ${LIGHT_TYPE.toUpperCase()}`);
           console.log('   Change LIGHT_TYPE to: "point", "spot", or "directional" to test');
           
-          // Find 2 lamps: left entry + above car
-          const leftEntryLamp = lampMeshes.find((lamp: any) => {
-            const pos = lamp.getAbsolutePosition();
-            return pos.x < -3 && pos.y > 2; // Left side, elevated
-          });
+          // Use the FIRST 2 orange/yellow emissive lamps (Object_184, Object_187)
+          const leftEntryLamp = lampMeshes[0]; // Object_184 at (1.9, 0.7, 0.9)
+          const carLamp = lampMeshes[1]; // Object_187 at (1.6, 0.5, -1.2)
           
-          const carLamp = lampMeshes.find((lamp: any) => {
-            const pos = lamp.getAbsolutePosition();
-            return Math.abs(pos.x) < 3 && Math.abs(pos.z) < 3 && pos.y > 3; // Center, high up
-          });
+          console.log(`   🔦 Left lamp: ${leftEntryLamp?.name} at (${leftEntryLamp?.getAbsolutePosition().x.toFixed(1)}, ${leftEntryLamp?.getAbsolutePosition().y.toFixed(1)}, ${leftEntryLamp?.getAbsolutePosition().z.toFixed(1)})`);
+          console.log(`   🔦 Car lamp: ${carLamp?.name} at (${carLamp?.getAbsolutePosition().x.toFixed(1)}, ${carLamp?.getAbsolutePosition().y.toFixed(1)}, ${carLamp?.getAbsolutePosition().z.toFixed(1)})`);
           
           // Sodium vapor color - warm golden orange
           const sodiumColor = new Color3(1.0, 0.7, 0.35); // More orange
