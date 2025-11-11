@@ -1032,8 +1032,10 @@ export default function BabylonSceneContent() {
           
           // GLB has no light objects, but has emissive lamp meshes
           // Find the lamp meshes and create lights at their positions
-          console.log('🔍 Searching for lamp meshes to create volumetric lights...');
-          const lampMeshes = scene.meshes.filter(m => 
+          console.log('🔍🔍🔍 SEARCHING FOR LAMP MESHES TO CREATE VOLUMETRIC LIGHTS...');
+          
+          // Search by name first
+          const lampMeshesByName = scene.meshes.filter(m => 
             m.name && (
               m.name.toLowerCase().includes('lamp') ||
               m.name.toLowerCase().includes('light') ||
@@ -1041,8 +1043,26 @@ export default function BabylonSceneContent() {
               m.name.toLowerCase().includes('lantern')
             )
           );
+          console.log(`  📛 Found ${lampMeshesByName.length} meshes by name:`, lampMeshesByName.map(m => m.name));
           
-          console.log(`  Found ${lampMeshes.length} potential lamp meshes:`, lampMeshes.map(m => m.name));
+          // Search by emissive material (meshes with glowing yellow materials)
+          const emissiveMeshes = scene.meshes.filter(m => {
+            if (!m.material) return false;
+            const mat = m.material as any;
+            if (mat.emissiveColor) {
+              const r = mat.emissiveColor.r;
+              const g = mat.emissiveColor.g;
+              const b = mat.emissiveColor.b;
+              // Look for yellow/orange emissives (more red+green than blue)
+              return (r > 0.3 || g > 0.3) && (r + g > b * 1.5);
+            }
+            return false;
+          });
+          console.log(`  💡 Found ${emissiveMeshes.length} meshes with yellow/orange emissive:`, emissiveMeshes.map(m => m.name));
+          
+          // Use emissive meshes if found, otherwise name-based
+          const lampMeshes = emissiveMeshes.length >= 2 ? emissiveMeshes : lampMeshesByName;
+          console.log(`  ✅ Using ${lampMeshes.length} lamp meshes for light creation`);
           
           if (lampMeshes.length >= 2) {
             // Create point lights at lamp positions
