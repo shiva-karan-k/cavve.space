@@ -842,30 +842,10 @@ export default function BabylonSceneContent() {
       
       console.log('📦 Loading batcave model...');
       
-      // Load GLB from GitHub Releases (FREE unlimited bandwidth)
-      // Fallback to local file in development if available
-      const isLocalDevMode = process.env.NODE_ENV === 'development';
-      const localGlbPath = '/the_batcave.glb';
-      const githubReleasesUrl = process.env.NEXT_PUBLIC_GLB_URL || 
-        'https://github.com/shiva-karan-k/cavve/releases/download/v1.0/the_batcave.glb';
-      
-      // Try local file first in dev mode (faster iteration)
-      let glbUrl = githubReleasesUrl;
-      let loadingSource = 'GitHub Releases (FREE unlimited bandwidth)';
-      
-      if (isLocalDevMode) {
-        // Check if local file exists by trying to fetch it
-        try {
-          const response = await fetch(localGlbPath, { method: 'HEAD' });
-          if (response.ok) {
-            glbUrl = localGlbPath;
-            loadingSource = 'Local file (/public)';
-          }
-        } catch {
-          // Local file doesn't exist, use GitHub Releases
-          loadingSource = 'GitHub Releases (local file not found)';
-        }
-      }
+      // Load GLB from Next.js public folder (served by Vercel)
+      // File tracked with Git LFS, served directly from repo
+      const glbUrl = process.env.NEXT_PUBLIC_GLB_URL || '/the_batcave.glb';
+      const loadingSource = glbUrl.startsWith('http') ? 'External CDN' : 'Vercel/Next.js (from repo with Git LFS)';
 
       console.log(`📂 Loading GLB from: ${loadingSource}`);
       console.log(`📦 URL: ${glbUrl}`);

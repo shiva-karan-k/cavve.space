@@ -369,18 +369,6 @@ export default function UIOverlay() {
             💡
           </button>
           
-          {/* Preset Switcher Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              cyclePreset();
-            }}
-            className="w-12 h-12 border-2 border-white/30 hover:border-white hover:bg-white/10 text-white rounded-lg font-semibold transition-all flex items-center justify-center text-xl"
-            title={`Lighting Preset: ${currentPreset}`}
-          >
-            🔆
-          </button>
-          
           {/* Pointer Lock Toggle Button */}
           <button
             onClick={(e) => {
