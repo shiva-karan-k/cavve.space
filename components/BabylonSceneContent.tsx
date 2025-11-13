@@ -842,10 +842,10 @@ export default function BabylonSceneContent() {
       
       console.log('📦 Loading batcave model...');
       
-      // Load GLB from Next.js public folder (served by Vercel)
-      // File tracked with Git LFS, served directly from repo
-      const glbUrl = process.env.NEXT_PUBLIC_GLB_URL || '/the_batcave.glb';
-      const loadingSource = glbUrl.startsWith('http') ? 'External CDN' : 'Vercel/Next.js (from repo with Git LFS)';
+      // Load GLB from Cloudflare R2 (FREE unlimited bandwidth + proper CORS)
+      const glbUrl = process.env.NEXT_PUBLIC_GLB_URL || 
+        'https://pub-4484dcd7bcae43cfaff6e6100b8d1ed4.r2.dev/the_batcave.glb';
+      const loadingSource = 'Cloudflare R2 (FREE unlimited bandwidth + CORS)';
 
       console.log(`📂 Loading GLB from: ${loadingSource}`);
       console.log(`📦 URL: ${glbUrl}`);
