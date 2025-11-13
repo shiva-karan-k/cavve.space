@@ -41,8 +41,7 @@ next-env.d.ts
 # large model files - using Git LFS, but keep models folder excluded
 /models
 
-
-
-
-# Large GLB - hosted externally (Vercel Blob)
+# Large GLB - hosted externally (GitHub Releases)
+# Optionally keep in /public for local development (but don't commit to keep repo size small)
 the_batcave.glb
+/public/the_batcave.glb
