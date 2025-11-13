@@ -41,5 +41,7 @@ next-env.d.ts
 # large model files - using Git LFS, but keep models folder excluded
 /models
 
-# Large GLB files tracked with Git LFS
-# .gitattributes configures LFS for *.glb files
+# Large GLB files - hosted on Cloudflare R2
+# Don't commit to repo to keep it small
+*.glb
+public/*.glb
