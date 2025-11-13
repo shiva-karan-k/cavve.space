@@ -45,3 +45,6 @@ next-env.d.ts
 # Don't commit to repo to keep it small
 *.glb
 public/*.glb
+
+# Upload script with credentials
+upload-r2.js
