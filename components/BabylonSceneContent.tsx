@@ -953,8 +953,8 @@ export default function BabylonSceneContent() {
           );
           console.log(`  📛 Found ${lampMeshesByName.length} meshes by name:`, lampMeshesByName.map(m => m.name));
           
-          // Search by emissive material (meshes with glowing yellow materials)
-          const emissiveMeshes = scene.meshes.filter(m => {
+          // Search by emissive material - separate white lamps from yellow lamps
+          const yellowEmissiveMeshes = scene.meshes.filter(m => {
             if (!m.material) return false;
             const mat = m.material as any;
             if (mat.emissiveColor) {
@@ -966,11 +966,33 @@ export default function BabylonSceneContent() {
             }
             return false;
           });
-          console.log(`  💡 Found ${emissiveMeshes.length} meshes with yellow/orange emissive:`, emissiveMeshes.map(m => m.name));
           
-          // Use emissive meshes if found, otherwise name-based
-          const lampMeshes = emissiveMeshes.length >= 2 ? emissiveMeshes : lampMeshesByName;
-          console.log(`  ✅ Using ${lampMeshes.length} lamp meshes for light creation`);
+          // Find WHITE lamps (neutral/white emissive, not yellow)
+          const whiteLampMeshes = scene.meshes.filter(m => {
+            if (!m.material) return false;
+            const mat = m.material as any;
+            if (mat.emissiveColor) {
+              const r = mat.emissiveColor.r;
+              const g = mat.emissiveColor.g;
+              const b = mat.emissiveColor.b;
+              // White/neutral emissive (all colors similar, not yellow)
+              const isWhite = Math.abs(r - g) < 0.2 && Math.abs(g - b) < 0.2 && r > 0.1;
+              const isNotYellow = !((r > 0.3 || g > 0.3) && (r + g > b * 1.5));
+              return isWhite && isNotYellow;
+            }
+            // Also check by name for white lamps
+            return m.name && (
+              m.name.toLowerCase().includes('white') ||
+              m.name.toLowerCase().includes('lamp') && !yellowEmissiveMeshes.includes(m)
+            );
+          });
+          
+          console.log(`  💡 Found ${yellowEmissiveMeshes.length} yellow/orange emissive meshes:`, yellowEmissiveMeshes.map(m => m.name));
+          console.log(`  ⚪ Found ${whiteLampMeshes.length} white lamp meshes:`, whiteLampMeshes.map(m => m.name));
+          
+          // Combine all lamp meshes - white lamps first, then yellow
+          const lampMeshes = [...whiteLampMeshes.slice(0, 2), ...yellowEmissiveMeshes, ...lampMeshesByName.filter(m => !whiteLampMeshes.includes(m) && !yellowEmissiveMeshes.includes(m))];
+          console.log(`  ✅ Using ${lampMeshes.length} total lamp meshes (${whiteLampMeshes.slice(0, 2).length} white primary + ${yellowEmissiveMeshes.length} yellow + others)`);
           
           // Make yellow lamp MESHES glow (emissive) + create actual PointLights
           console.log('  💡 Making yellow lamp MESHES emissive + creating street lights...');
@@ -1009,42 +1031,133 @@ export default function BabylonSceneContent() {
           });
           console.log(`   ✅ Boosted ${brightLampCount} lamp meshes to intensity 15.0`);
           
-          // Use MORE lamps for better cave coverage (sweet spot between 12 and 36)
-          const primaryLamps = lampMeshes.slice(0, 20); // Use 20 lamps for good coverage
-          console.log(`   🔦 Creating ${primaryLamps.length} SpotLights at strategic lamp positions...`);
+          // Indian street light color - warm golden yellow-orange
+          const indianStreetColor = new Color3(1.0, 0.75, 0.4); // Traditional Indian sodium vapor yellow-orange
+          const indianStreetSpecular = new Color3(0.8, 0.6, 0.3);
           
-          // Sodium vapor color - warm golden orange
-          const sodiumColor = new Color3(1.0, 0.7, 0.35); // Traditional street light
-          const sodiumSpecular = new Color3(0.7, 0.5, 0.25);
+          // Use ALL lamps for maximum coverage - Indian street vibes!
+          const allLamps = lampMeshes; // Use ALL lamps found
+          console.log(`   🔦 Creating ${allLamps.length} SpotLights at ALL lamp positions...`);
+          
+          // Find car/vehicle meshes for targeted lighting
+          const carMeshes = scene.meshes.filter(m => 
+            m.name && (
+              m.name.toLowerCase().includes('car') ||
+              m.name.toLowerCase().includes('batmobile') ||
+              m.name.toLowerCase().includes('vehicle')
+            )
+          );
+          
+          // Calculate car area center if found
+          let carAreaCenter = new Vector3(0, 0, 0);
+          if (carMeshes.length > 0) {
+            let totalX = 0, totalY = 0, totalZ = 0;
+            carMeshes.forEach(car => {
+              const pos = car.getAbsolutePosition();
+              totalX += pos.x;
+              totalY += pos.y;
+              totalZ += pos.z;
+            });
+            carAreaCenter = new Vector3(
+              totalX / carMeshes.length,
+              totalY / carMeshes.length + 2, // Slightly above car
+              totalZ / carMeshes.length
+            );
+            console.log(`   🚗 Found car area at (${carAreaCenter.x.toFixed(1)}, ${carAreaCenter.y.toFixed(1)}, ${carAreaCenter.z.toFixed(1)})`);
+          }
           
           let streetLightsCreated = 0;
           
-          // SPOTLIGHT - directional cone (like real street lamp)
-          primaryLamps.forEach((lamp: any, idx: number) => {
+          // PRIMARY: First 2 white lamps = SUPER BRIGHT Indian street lights
+          const primaryWhiteLamps = lampMeshes.slice(0, 2);
+          primaryWhiteLamps.forEach((lamp: any, idx: number) => {
             const pos = lamp.getAbsolutePosition();
             const light = new SpotLight(
-              `streetLight_${idx}`,
+              `primaryStreetLight_${idx}`,
               pos,
-              new Vector3(0, -1, 0.1), // Aim mostly down, slightly forward
-              Math.PI / 2.5, // 72 degree cone (wider coverage)
-              2, // Soft falloff
+              new Vector3(0, -1, 0.05), // Aim straight down
+              Math.PI / 2.2, // Wide cone (80 degrees) for Indian street light spread
+              1.8, // Soft falloff
               scene
             );
-            light.intensity = 300; // Balanced for 20 lights (20 × 300 = 6,000 total)
-            light.range = 28; // Good coverage per light
-            light.diffuse = sodiumColor;
-            light.specular = sodiumSpecular;
+            light.intensity = 800; // SUPER BRIGHT - primary light sources!
+            light.range = 35; // Wide coverage
+            light.diffuse = indianStreetColor;
+            light.specular = indianStreetSpecular;
             
-            // CRITICAL: Mark as custom light so light switch doesn't disable it
+            // Make lamp mesh itself glow bright yellow
+            if (lamp.material) {
+              const materials = Array.isArray(lamp.material) ? lamp.material : [lamp.material];
+              materials.forEach((mat: any) => {
+                if (mat.emissiveColor) {
+                  mat.emissiveColor = new Color3(1.0, 0.75, 0.4); // Indian street yellow
+                  mat.emissiveIntensity = 12.0; // Very bright glow
+                  mat.disableLighting = true;
+                  mat.markAsDirty();
+                }
+              });
+            }
+            
             (light as any).isCustomStreetLight = true;
-            
             streetLightsCreated++;
             
             const p = lamp.getAbsolutePosition();
-            console.log(`    ✅ SpotLight ${idx} at (${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)})`);
+            console.log(`    ⭐ PRIMARY StreetLight ${idx} at (${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}) - INTENSITY 800`);
           });
           
-          console.log(`  ✅ Created ${streetLightsCreated} sodium vapor street lights (SpotLights)`);
+          // SECONDARY: All other lamps = regular Indian street lights
+          const secondaryLamps = lampMeshes.slice(2);
+          secondaryLamps.forEach((lamp: any, idx: number) => {
+            const pos = lamp.getAbsolutePosition();
+            const light = new SpotLight(
+              `streetLight_${idx + 2}`,
+              pos,
+              new Vector3(0, -1, 0.1), // Aim mostly down, slightly forward
+              Math.PI / 2.5, // 72 degree cone
+              2, // Soft falloff
+              scene
+            );
+            light.intensity = 400; // Increased from 300 for more illumination
+            light.range = 30; // Increased coverage
+            light.diffuse = indianStreetColor;
+            light.specular = indianStreetSpecular;
+            
+            (light as any).isCustomStreetLight = true;
+            streetLightsCreated++;
+          });
+          
+          // CAR AREA: Add extra lights specifically for car illumination
+          if (carMeshes.length > 0) {
+            console.log(`   🚗 Adding ${3} extra lights for car area illumination...`);
+            for (let i = 0; i < 3; i++) {
+              const offsetX = (i - 1) * 3; // Spread lights around car
+              const offsetZ = i === 1 ? -2 : 0; // One light slightly forward
+              const carLightPos = new Vector3(
+                carAreaCenter.x + offsetX,
+                carAreaCenter.y + 1,
+                carAreaCenter.z + offsetZ
+              );
+              
+              const carLight = new SpotLight(
+                `carLight_${i}`,
+                carLightPos,
+                new Vector3(0, -1, 0), // Aim straight down at car
+                Math.PI / 2.8, // Focused cone
+                1.5, // Sharp falloff
+                scene
+              );
+              carLight.intensity = 600; // Bright for car area
+              carLight.range = 25;
+              carLight.diffuse = indianStreetColor;
+              carLight.specular = indianStreetSpecular;
+              (carLight as any).isCustomStreetLight = true;
+              streetLightsCreated++;
+              
+              console.log(`    🚗 CarLight ${i} at (${carLightPos.x.toFixed(1)}, ${carLightPos.y.toFixed(1)}, ${carLightPos.z.toFixed(1)})`);
+            }
+          }
+          
+          console.log(`  ✅ Created ${streetLightsCreated} Indian street lights (${primaryWhiteLamps.length} PRIMARY + ${secondaryLamps.length} secondary + ${carMeshes.length > 0 ? 3 : 0} car area)`);
           
           console.log('✅ GLB native lights loaded and stored as default preset');
           console.log('🖼️ Textures:', scene.textures.length);
